@@ -179,7 +179,7 @@ Scope: tokens default to `read`; posting needs `write` — a read-only token get
 | Upload bytes | `PUT <presigned url>` | straight to S3; send the same `Content-Type` that was presigned |
 | Create block | `POST /v3/blocks` | `value` = text, URL, or uploaded S3 URL; channel id(s) to connect to; `title` / `description` **(verify field names)** |
 | Batch create | `POST /v3/blocks/batch` | not needed for v1; useful for a future "thread" post |
-| Update block | `PUT /v3/blocks/{id}` | owner only; edit caption later (v2 of the app) |
+| Update block | `PUT /v3/blocks/{id}` | owner only; edit title/description later (v2 of the app) |
 | Remove from channel | disconnect endpoint **(verify)** | for the History context menu |
 
 Rate limits: the docs ask clients to space out write operations. One post =
