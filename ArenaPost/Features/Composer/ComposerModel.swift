@@ -129,7 +129,7 @@ final class ComposerModel {
         postTask = Task {
             do {
                 try await PostService(client: client).post(text: text, attachment: upload, channelID: channel.id) { progress in
-                    Task { @MainActor [weak self] in self?.apply(progress) }
+                    Task { @MainActor in self.apply(progress) }
                 }
                 finishPost(channel: channel)
             } catch is CancellationError {
