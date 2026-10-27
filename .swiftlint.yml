@@ -27,7 +27,7 @@ opt_in_rules:
   - private_swiftui_state
 
 nesting:
-  type_level: 2
+  type_level: 3
 
 function_parameter_count:
   warning: 6
