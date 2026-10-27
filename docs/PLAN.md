@@ -62,7 +62,9 @@ Launch
 - Opens `ASWebAuthenticationSession` → Are.na OAuth page → returns to the app.
 - Error state (cancelled / network / denied) shown inline under the button.
 - Debug builds only: "Use personal access token" field, so development is not
-  blocked on the OAuth app registration.
+  blocked on the OAuth app registration. Create one with the `write` scope at
+  `https://www.are.na/developers/personal-access-tokens` (it gives full access
+  to your account, so it never ships in release builds).
 
 ### 2.2 ComposerView (home)
 
@@ -126,7 +128,9 @@ Layout, top to bottom:
 ### 2.5 ChannelPickerView
 
 - Search field + list of your channels (title, block count, visibility badge
-  public/closed/private).
+  public/closed/private). The search filters the already-loaded list on the
+  device; it does **not** call Are.na's search API, because v3 search is
+  available to Premium/Supporter accounts only.
 - "New channel…" row → name + visibility → creates it and selects it.
 - Selection is stored locally (id, slug, title) and the composer chip updates.
 - If the stored channel later returns 404/403 (deleted, access lost), the app
@@ -139,16 +143,21 @@ Layout, top to bottom:
 Base URL: `https://api.are.na/v3`. Are.na's v2 API is deprecated; build on v3
 only.
 
-> ⚠️ The exact request/response field names below must be checked against
-> `https://api.are.na/v3/openapi.json` and the API Explorer
-> (`https://www.are.na/developers/explore`) before implementation. This
-> planning session could not reach are.na directly (network policy), so items
-> marked **(verify)** are taken from the docs' summaries, not from the spec.
+Reference: [Are.na Developers](https://www.are.na/developers) ·
+[API Explorer](https://www.are.na/developers/explore) ·
+OpenAPI spec `https://api.are.na/v3/openapi.json`.
+
+> ⚠️ This planning session could not open are.na directly (the environment's
+> network policy blocks it), so the facts below come from the indexed
+> developer pages. Items marked **(verify)** are not confirmed yet: check them
+> against the OpenAPI spec in M0 and save real responses as test fixtures.
 
 ### 3.1 Auth — OAuth 2.0 + PKCE (public client, no secret in the app)
 
-1. Register an OAuth application on Are.na with redirect URI
-   `arenapost://oauth/callback` (scheme name TBD with the app name).
+1. Register an OAuth application at
+   `https://www.are.na/developers/oauth/applications` with redirect URI
+   `arenapost://oauth/callback` (scheme name TBD with the app name). Only the
+   `client_id` is used by the app.
 2. App generates `code_verifier` (43–128 random chars) and
    `code_challenge = BASE64URL(SHA256(verifier))` with CryptoKit, plus a random
    `state`.
@@ -157,30 +166,43 @@ only.
 4. Callback → verify `state` → `POST https://api.are.na/v3/oauth/token` with
    `grant_type=authorization_code`, `code`, `client_id`, `redirect_uri`,
    `code_verifier`.
-5. Store the access token (and refresh token if issued **(verify)**) in the
-   Keychain (`kSecAttrAccessibleAfterFirstUnlock`, shared access group so a
-   future Share Extension can use it).
-6. All requests: `Authorization: Bearer <token>`. A 401 → try refresh, else
-   sign out to LoginView.
+5. Store the access token in the Keychain
+   (`kSecAttrAccessibleAfterFirstUnlock`, shared access group so a future Share
+   Extension can use it). Are.na access tokens **do not expire** and there is
+   no refresh token, so there is no refresh logic to build.
+6. All requests: `Authorization: Bearer <token>`. A 401 means the user revoked
+   the app → clear the Keychain and go back to LoginView.
 
-Scope: tokens default to `read`; posting needs `write` — a read-only token gets
-**403** on writes, which the app surfaces as "Sign in again to allow posting".
+Scopes: only `read` and `write` exist. Tokens default to `read`; posting needs
+`write` — a read-only token gets **403** on writes, which the app surfaces as
+"Sign in again to allow posting".
+
+Plans: Are.na rate limits are tiered by membership (Free / Premium /
+Supporter). The free tier is meant to be enough for a real project, and this
+app makes very few calls, so it should work on a free account. Search
+endpoints are Premium-only, which is why the app doesn't use them.
 
 ### 3.2 Endpoints used
 
 | Purpose | Endpoint | Notes |
 | --- | --- | --- |
-| Current user | `GET /v3/me` **(verify)** | id, name, slug, avatar — needed for "Mine" filter and composer header |
+| Current user | `GET /v3/me` | id, name, slug, avatar — needed for "Mine" filter and composer header |
 | My channels | `GET /v3/users/{id}/channels` **(verify)** | paginated; feeds the picker |
 | Create channel | `POST /v3/channels` | title, visibility |
 | Channel info | `GET /v3/channels/{id}` | validate stored channel on launch |
-| Channel contents | `GET /v3/channels/{id}/contents?page=&per=` | `per` max 100, default sort `position_desc`, meta has `has_more_pages` / `next_page` |
+| Channel contents | `GET /v3/channels/{id}/contents?page=&per=` | `per` max 100, default sort `position_desc`, meta has `has_more_pages` / `next_page`; each item carries its **connection** object (id + abilities) |
 | Presign upload | `POST /v3/uploads/presign` **(verify path & body)** | returns presigned S3 PUT URLs, up to 50 files, expire after 1h |
 | Upload bytes | `PUT <presigned url>` | straight to S3; send the same `Content-Type` that was presigned |
 | Create block | `POST /v3/blocks` | `value` = text, URL, or uploaded S3 URL; channel id(s) to connect to; `title` / `description` **(verify field names)** |
 | Batch create | `POST /v3/blocks/batch` | not needed for v1; useful for a future "thread" post |
-| Update block | `PUT /v3/blocks/{id}` | owner only; edit title/description later (v2 of the app) |
-| Remove from channel | disconnect endpoint **(verify)** | for the History context menu |
+| Update block | `PUT /v3/blocks/{id}` | owner only; body takes `title`, `description`, `content`, `alt_text`, `metadata`; edit title/description later (v2 of the app) |
+| Remove from channel | `DELETE /v3/connections/{id}` | uses the connection id from channel contents; show the menu item only when the connection's `abilities` say the user can remove it |
+
+Create block body: the update endpoint confirms the field names `title`,
+`description` and `alt_text`; the create endpoint is expected to use the same
+names plus `value` and the channel id(s) **(verify)**. `alt_text` is a free
+accessibility win for images later (e.g. an "Add alt text" row in the
+composer).
 
 Rate limits: the docs ask clients to space out write operations. One post =
 1–3 writes, so this only matters for retries; use exponential backoff on 429.
