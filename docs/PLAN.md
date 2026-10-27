@@ -15,13 +15,13 @@ becomes one Are.na block in the channel you picked in Settings.
 - **One post = one block.** Are.na blocks hold one kind of content, so a post is
   exactly one of:
 
-  | What you compose                         | Block created              |
-  | ---------------------------------------- | -------------------------- |
-  | Text                                     | `Text` (markdown)          |
-  | Text that is only a URL                  | `Link` (Are.na scrapes it; YouTube/Vimeo etc. become `Embed`) |
-  | One photo                                | `Image`                    |
-  | One video file                           | `Attachment` (Are.na plays mp4 inline) |
-  | One file (PDF, audio…)                   | `Attachment`               |
+  | What you compose        | Block created                                                  |
+  | ----------------------- | -------------------------------------------------------------- |
+  | Text                    | `Text` (markdown)                                              |
+  | Text that is only a URL | `Link` (Are.na scrapes it; YouTube/Vimeo become `Embed`)       |
+  | One photo               | `Image`                                                        |
+  | One video file          | `Attachment` (`video/mp4`; confirmed with a real upload in M4) |
+  | One file (PDF, audio…)  | `Attachment`                                                   |
 
   When an attachment is added, the other attachment buttons are disabled until
   it is removed.
@@ -45,7 +45,7 @@ becomes one Are.na block in the channel you picked in Settings.
 
 ## 2. Screens & flows
 
-```
+```text
 Launch
   └─ RootView (switch on session state)
        ├─ .signedOut            → LoginView
@@ -100,20 +100,38 @@ Layout, top to bottom:
 
 ### 2.3 HistoryView (past posts)
 
-- Vertical feed of `PostCard`s, newest first, from the configured channel.
+- Vertical feed of `PostCard`s, newest first (`sort=created_at_desc`), from
+  the configured channel.
 - Segmented filter: **Mine** (default) / **Everyone** — channels can have
-  collaborators; "Mine" keeps only blocks whose `user.id == me.id`.
+  collaborators. "Mine" is filtered by the server (`user_id=<me.id>` on the
+  contents request), so pages stay full and pagination is correct.
+- Channel contents can include channels as well as blocks; items with
+  `type == "Channel"` are skipped.
 - `PostCard` renders by block type:
-  - Text → markdown via `AttributedString(markdown:)`.
-  - Image → aspect-fit image (display size URL), tap to full-screen zoom.
-  - Attachment (video) → `VideoPlayer` with poster frame; other files → file chip.
-  - Link / Embed → preview card (thumbnail, title, host).
+  - Text → `content.markdown` via `AttributedString(markdown:)`.
+  - Image → `image.medium.src_2x`, sized from `image.aspect_ratio` so the card
+    doesn't jump; `image.blurhash` as the placeholder; tap → full-screen
+    `image.src`.
+  - Attachment → if `attachment.content_type` starts with `video/`,
+    `VideoPlayer` on `attachment.url` with `image` as poster; other files →
+    file chip (`attachment.filename`, `file_size`), opens in Quick Look.
+  - Link → preview card (`image`, `title`, `source.url` host).
+  - Embed → thumbnail (`embed.thumbnail_url`) with a play badge; tap opens
+    `embed.source_url`.
+  - `PendingBlock` / `state == "processing"` → placeholder card with a spinner,
+    refetched with `GET /v3/blocks/{id}` until `available` (or `failed` → error
+    card).
   - Image / Attachment: the **description** is shown as the post text above the
     media (like a tweet with a photo); the **title** (filename) is shown as
     small secondary metadata under the media.
   - Footer: relative time ("3h").
 - Pull to refresh, infinite scroll (load next page when the last 5 cards appear).
 - Context menu: Copy text/URL, Share, Open in Are.na, Remove from channel.
+  "Remove" is shown when `connection.connected_by.id == me.id` or you own the
+  channel; a 403 from the server is still handled (contents items don't carry
+  removal abilities, so this is a best guess, not a guarantee).
+- Uses `ETag` / `If-None-Match` on refresh, so an unchanged first page comes
+  back as a cheap `304`.
 - Empty state: "Nothing here yet — your posts will show up here."
 
 ### 2.4 SettingsView
@@ -127,11 +145,18 @@ Layout, top to bottom:
 
 ### 2.5 ChannelPickerView
 
-- Search field + list of your channels (title, block count, visibility badge
-  public/closed/private). The search filters the already-loaded list on the
-  device; it does **not** call Are.na's search API, because v3 search is
-  available to Premium/Supporter accounts only.
-- "New channel…" row → name + visibility → creates it and selects it.
+- List of channels you created: `GET /v3/users/{me.id}/contents?type=Channel&sort=updated_at_desc`
+  (title, `counts.blocks`, visibility badge public/closed/private), loaded
+  page by page as you scroll.
+- Search field filters the loaded list on the device. It does **not** call
+  `GET /v3/search`, which is Premium-only.
+- **"Paste channel link…"** row for channels you collaborate on but didn't
+  create (they aren't in the list above): accepts `are.na/<user>/<slug>` or a
+  bare slug → `GET /v3/channels/{slug}`.
+- "New channel…" row → title + visibility (default `closed`) →
+  `POST /v3/channels` → selected.
+- Before saving a selection, the app checks `GET /v3/channels/{id}` →
+  `can.add_to == true`; otherwise "You can't add blocks to this channel".
 - Selection is stored locally (id, slug, title) and the composer chip updates.
 - If the stored channel later returns 404/403 (deleted, access lost), the app
   routes back to this picker with an explanation.
@@ -143,14 +168,9 @@ Layout, top to bottom:
 Base URL: `https://api.are.na/v3`. Are.na's v2 API is deprecated; build on v3
 only.
 
-Reference: [Are.na Developers](https://www.are.na/developers) ·
-[API Explorer](https://www.are.na/developers/explore) ·
-OpenAPI spec `https://api.are.na/v3/openapi.json`.
-
-> ⚠️ This planning session could not open are.na directly (the environment's
-> network policy blocks it), so the facts below come from the indexed
-> developer pages. Items marked **(verify)** are not confirmed yet: check them
-> against the OpenAPI spec in M0 and save real responses as test fixtures.
+Source of truth: the snapshot in [`docs/arena/`](arena/) —
+`openapi.json` (full spec) and `developers-all.md` (guide), refreshed with
+`scripts/fetch-arena-docs.sh`. Everything below was checked against it.
 
 ### 3.1 Auth — OAuth 2.0 + PKCE (public client, no secret in the app)
 
@@ -158,69 +178,116 @@ OpenAPI spec `https://api.are.na/v3/openapi.json`.
    `https://www.are.na/developers/oauth/applications` with redirect URI
    `arenapost://oauth/callback` (scheme name TBD with the app name). Only the
    `client_id` is used by the app.
-2. App generates `code_verifier` (43–128 random chars) and
+2. App generates `code_verifier` (43–128 chars from `A-Z a-z 0-9 - . _ ~`) and
    `code_challenge = BASE64URL(SHA256(verifier))` with CryptoKit, plus a random
    `state`.
 3. `ASWebAuthenticationSession` opens
    `https://www.are.na/oauth/authorize?client_id=…&redirect_uri=…&response_type=code&scope=write&code_challenge=…&code_challenge_method=S256&state=…`
-4. Callback → verify `state` → `POST https://api.are.na/v3/oauth/token` with
-   `grant_type=authorization_code`, `code`, `client_id`, `redirect_uri`,
-   `code_verifier`.
-5. Store the access token in the Keychain
+   (`scope` defaults to `read` if omitted, so `write` must be explicit).
+4. Callback → verify `state` → `POST https://api.are.na/v3/oauth/token` as
+   **`application/x-www-form-urlencoded`** with `grant_type=authorization_code`,
+   `client_id`, `code`, `redirect_uri`, `code_verifier` (no `client_secret`).
+   Response: `{ access_token, token_type: "Bearer", scope, created_at }`.
+5. Check the returned `scope` contains `write`; if not, show "Are.na only
+   granted read access — sign in again and allow posting".
+6. Store the access token in the Keychain
    (`kSecAttrAccessibleAfterFirstUnlock`, shared access group so a future Share
-   Extension can use it). Are.na access tokens **do not expire** and there is
-   no refresh token, so there is no refresh logic to build.
-6. All requests: `Authorization: Bearer <token>`. A 401 means the user revoked
-   the app → clear the Keychain and go back to LoginView.
-
-Scopes: only `read` and `write` exist. Tokens default to `read`; posting needs
-`write` — a read-only token gets **403** on writes, which the app surfaces as
-"Sign in again to allow posting".
-
-Plans: Are.na rate limits are tiered by membership (Free / Premium /
-Supporter). The free tier is meant to be enough for a real project, and this
-app makes very few calls, so it should work on a free account. Search
-endpoints are Premium-only, which is why the app doesn't use them.
+   Extension can use it). There is **no `expires_in` and no refresh token**,
+   so there is no refresh logic to build.
+7. All requests: `Authorization: Bearer <token>` and
+   `User-Agent: ArenaPost/<version> (+<contact URL or email>)` (Are.na asks
+   clients to identify themselves). A 401 means the token was revoked → clear
+   the Keychain and go back to LoginView.
 
 ### 3.2 Endpoints used
 
 | Purpose | Endpoint | Notes |
 | --- | --- | --- |
-| Current user | `GET /v3/me` | id, name, slug, avatar — needed for "Mine" filter and composer header |
-| My channels | `GET /v3/users/{id}/channels` **(verify)** | paginated; feeds the picker |
-| Create channel | `POST /v3/channels` | title, visibility |
-| Channel info | `GET /v3/channels/{id}` | validate stored channel on launch |
-| Channel contents | `GET /v3/channels/{id}/contents?page=&per=` | `per` max 100, default sort `position_desc`, meta has `has_more_pages` / `next_page`; each item carries its **connection** object (id + abilities) |
-| Presign upload | `POST /v3/uploads/presign` **(verify path & body)** | returns presigned S3 PUT URLs, up to 50 files, expire after 1h |
-| Upload bytes | `PUT <presigned url>` | straight to S3; send the same `Content-Type` that was presigned |
-| Create block | `POST /v3/blocks` | `value` = text, URL, or uploaded S3 URL; channel id(s) to connect to; `title` / `description` **(verify field names)** |
-| Batch create | `POST /v3/blocks/batch` | not needed for v1; useful for a future "thread" post |
-| Update block | `PUT /v3/blocks/{id}` | owner only; body takes `title`, `description`, `content`, `alt_text`, `metadata`; edit title/description later (v2 of the app) |
-| Remove from channel | `DELETE /v3/connections/{id}` | uses the connection id from channel contents; show the menu item only when the connection's `abilities` say the user can remove it |
+| Current user | `GET /v3/me` | `Me` = `User` + `email`, `counts`; id/name/slug/avatar used for the header and "Mine" |
+| My channels | `GET /v3/users/{id}/contents?type=Channel&sort=updated_at_desc&page=&per=` | channels you created; there is no dedicated "user channels" endpoint |
+| Channel by link | `GET /v3/channels/{id-or-slug}` | full resource incl. `can.add_to`, `owner`, `collaborators` |
+| Create channel | `POST /v3/channels` | `{ title, visibility?: public\|closed\|private (default closed), description? }` |
+| History | `GET /v3/channels/{id}/contents?sort=created_at_desc&user_id=&page=&per=24` | mixed blocks + channels; each item has `connection { id, position, connected_at, connected_by }` |
+| Refresh one block | `GET /v3/blocks/{id}` | poll a `processing` block after posting |
+| Presign upload | `POST /v3/uploads/presign` | body `{ files: [{ filename, content_type }] }` (1–50) → 201 `{ files: [{ upload_url, key, content_type }], expires_in: 3600 }` |
+| Upload bytes | `PUT <upload_url>` | raw bytes, `Content-Type` = the returned `content_type` |
+| Create block | `POST /v3/blocks` | see body below; 201 returns the `Block` (may be `PendingBlock`) |
+| Remove from channel | `DELETE /v3/connections/{connection.id}` | 204; removes it from the channel only — the block itself is not deleted |
+| Edit later | `PUT /v3/blocks/{id}` | owner only; `title`, `description`, `alt_text`, … (v2 of the app) |
 
-Create block body: the update endpoint confirms the field names `title`,
-`description` and `alt_text`; the create endpoint is expected to use the same
-names plus `value` and the channel id(s) **(verify)**. `alt_text` is a free
-accessibility win for images later (e.g. an "Add alt text" row in the
-composer).
+Not used: `GET /v3/search` (**Premium only**) and `POST /v3/blocks/batch`
+(**Supporter only**). The app works on a free account.
 
-Rate limits: the docs ask clients to space out write operations. One post =
-1–3 writes, so this only matters for retries; use exponential backoff on 429.
+**Create block body** (`BlockInput` + target channel):
+
+```jsonc
+// Text post
+{ "value": "today's **notes**", "channels": [{ "id": 123 }] }
+
+// Link post (value is a URL → Are.na infers Link or Embed)
+{ "value": "https://example.com/article", "channels": [{ "id": 123 }] }
+
+// Image / video / file post (value = uploaded S3 URL)
+{
+  "value": "https://s3.amazonaws.com/arena_images-temp/<key>",
+  "title": "IMG_4821.jpg",            // attached file name (§3.4)
+  "description": "composer text",     // markdown, omitted if empty
+  "channels": [{ "id": 123 }]
+}
+```
+
+- `channels: [{ id, position?, metadata? }]` is the preferred form; the legacy
+  `channel_ids: [..]` must not be sent alongside it. `id` can be a numeric id
+  or slug.
+- Other optional fields worth knowing: `alt_text` (images — a later "Add alt
+  text" row in the composer), `cover_url` (custom preview for Link/Attachment/
+  Embed), `metadata` (e.g. `{ "client": "arenapost" }` to mark posts made from
+  the app), `original_source_url` / `original_source_title`.
+
+**Block types the app must decode** (`type` discriminator): `Text`
+(`content.markdown`), `Image` (`image.{src, small, medium, large, square,
+blurhash, aspect_ratio, filename}`), `Link` (`image?`, `source.url`),
+`Attachment` (`attachment.{url, filename, content_type, file_size,
+file_extension}`, `image?` preview), `Embed` (`embed.{source_url, html,
+thumbnail_url}`), `PendingBlock`. Shared fields: `id`, `title`,
+`description.markdown`, `state` (`processing | available | failed`),
+`created_at`, `user`, `connection?`. Unknown types decode to `.unsupported`
+instead of failing the whole page.
+
+**Errors**: `{ error, code, details: { message, errors? } }`; 429 has its own
+shape with `error.retry_after` (seconds).
+
+**Rate limits** (global per account, separate read/write budgets):
+
+| Tier | Reads / min | Writes / min | Writes / hour |
+| --- | --- | --- | --- |
+| Free | 120 | 30 | 300 |
+| Premium | 300 | 60 | 1500 |
+| Supporter | 600 | 120 | 4000 |
+
+A media post is 2 writes (presign + create), a text post 1, so even the free
+tier is far above personal use. On 429 wait `retry_after` (or until
+`X-RateLimit-Reset`) before retrying — never a tight loop. History uses
+`ETag`/`If-None-Match` and only loads pages on scroll, as the docs ask.
 
 ### 3.3 Posting pipeline
 
-```
+```text
 ComposerDraft
   └─ classify()  → .text(String) | .link(URL) | .media(LocalAsset, description?)
-       ├─ text/link → POST /v3/blocks { value, channel }            → done
+       ├─ text/link → POST /v3/blocks { value, channels }              → done
        └─ media
-            1. prepare: image → JPEG/HEIC→JPEG, optional EXIF GPS strip, max 4096px
+            1. prepare: image → JPEG (HEIC→JPEG), optional EXIF GPS strip, max 4096px
                         video → AVAssetExportSession → .mp4 (H.264/HEVC per quality)
-            2. POST presign { filename, content_type }  → { upload_url, … }
-            3. PUT bytes to upload_url (URLSession upload task, progress → UI)
-            4. POST /v3/blocks { value: <S3 URL>, channel,
-                                 title: <file name>, description: <composer text> }
-            5. Block may arrive with a "processing" state; History refetches it
+            2. POST /v3/uploads/presign { files: [{ filename, content_type }] }
+                 → files[0].{ upload_url, key, content_type }
+            3. PUT bytes to upload_url, Content-Type = content_type
+               (URLSession upload task, progress → UI)
+            4. POST /v3/blocks { value: "https://s3.amazonaws.com/arena_images-temp/<key>",
+                                 title: <file name>, description: <composer text>,
+                                 channels: [{ id }] }
+            5. If the response is PendingBlock / state == processing,
+               poll GET /v3/blocks/{id} (backoff 1s → 2s → 4s …, max ~1 min)
 ```
 
 `classify()` rules (unit-tested):
@@ -230,6 +297,14 @@ ComposerDraft
   attachment stays plain description text — it does not create a Link block.
 - Trimmed text is a single `http(s)` URL (via `NSDataDetector`) → `.link`.
 - Otherwise → `.text` (markdown is passed as-is).
+
+Not documented by Are.na, to confirm with a real upload in M4:
+
+- **Video**: the presign docs say "images, attachments"; an `.mp4` uploaded
+  this way is expected to become an `Attachment` block with
+  `attachment.content_type = video/mp4`.
+- **Maximum upload size**: no limit is published. Test a large video early;
+  if there is a cap, check size before presigning and show a clear message.
 
 ### 3.4 Where the attachment's file name (block title) comes from
 
@@ -271,7 +346,7 @@ Rules:
 
 ### 4.2 Project layout
 
-```
+```text
 ArenaPost/                         Xcode app target (synchronized folders)
   App/
     ArenaPostApp.swift
@@ -293,7 +368,7 @@ Packages/ArenaKit/                 local Swift package, pure Foundation (+Crypto
     Auth/        OAuthConfig, PKCE, TokenStore (protocol) + KeychainTokenStore
     Posting/     DraftClassifier, AttachmentNaming (title from file name), Uploader (presign + S3 PUT), PostService
   Tests/ArenaKitTests/
-    PKCETests, DraftClassifierTests, AttachmentNamingTests, BlockDecodingTests (fixtures from openapi examples),
+    PKCETests, DraftClassifierTests, AttachmentNamingTests, BlockDecodingTests (fixtures built from `docs/arena/openapi.json` examples),
     ArenaClientTests (URLProtocol stub)
 ```
 
@@ -318,8 +393,9 @@ decoding can be checked against real JSON fixtures.
   the app is backgrounded; the pending post (block-create step) is persisted to
   a small JSON file and completed on next launch/wake.
 - Presigned URLs expire after 1h: if an upload is retried later, presign again.
-- Are.na upload size limits depend on the account plan **(verify)** — check
-  file size before uploading and show a clear error instead of a failed PUT.
+- Are.na publishes no upload size limit; once one is found in testing (M4),
+  check file size before presigning and show a clear error instead of a
+  failed PUT.
 
 ---
 
@@ -337,10 +413,10 @@ decoding can be checked against real JSON fixtures.
 - **Secrets**: the OAuth `client_id` is not secret but lives in an
   `.xcconfig` (not hard-coded); no client secret is ever shipped (PKCE).
 
-> Note: iOS apps can only be built on macOS with Xcode. The cloud session this
-> plan was written in is Linux and has no access to `api.are.na`, so the app
-> scaffolding/build/verification steps need a Mac (or CI on a macOS runner and
-> `api.are.na` allowed in the environment's network policy).
+> Note: iOS apps can only be built on macOS with Xcode. Cloud sessions on this
+> repo run on Linux and can't reach `api.are.na`, so building and calling the
+> real API needs a Mac (or CI on a macOS runner). `ArenaKit` unit tests run
+> anywhere.
 
 ---
 
@@ -348,11 +424,11 @@ decoding can be checked against real JSON fixtures.
 
 | # | Milestone | Done when |
 | - | --------- | --------- |
-| M0 | Setup | Are.na OAuth app registered; Xcode project + `ArenaKit` package; SwiftLint/swift-format; CI green on an empty app; API field names verified against `openapi.json` and fixtures saved |
+| M0 | Setup | Are.na OAuth app registered; Xcode project + `ArenaKit` package; SwiftLint/swift-format; CI green on an empty app; JSON fixtures for each block type saved from `docs/arena/openapi.json` |
 | M1 | Auth & gate | Sign in via OAuth+PKCE, token in Keychain, `/me` loaded, sign out works, RootView routing tested |
-| M2 | Channel | Picker lists/searches channels, can create one, selection persisted, invalid channel handled |
+| M2 | Channel | Picker lists/filters your channels, paste-a-link for collaborations, create one, `can.add_to` checked, selection persisted, invalid channel handled |
 | M3 | Text & link posts | Composer focused on launch; text → Text block, URL → Link block; toast; draft restore |
-| M4 | Image & video posts | PhotosPicker + camera + files; prep/export; presign → PUT → create; progress; filename → title, text → description (D1); size checks |
+| M4 | Image & video posts | PhotosPicker + camera + files; prep/export; presign → PUT → create; progress; filename → title, text → description (D1); first task: upload a real mp4 + a large file to confirm video → Attachment and find the size cap |
 | M5 | History | Paginated feed with per-type cards, Mine/Everyone filter, refresh, context menu incl. remove |
 | M6 | Polish | Background video upload + resume, retry queue, haptics, empty/error states, accessibility pass, app icon |
 | M7 | Optional | Share Extension ("Post to my-feed" from Safari/Photos), App Intent / Shortcut + Action Button, Lock Screen widget that opens the composer |
