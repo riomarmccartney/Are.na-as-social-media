@@ -1,6 +1,7 @@
 import Foundation
+
 #if canImport(FoundationNetworking)
-import FoundationNetworking
+    import FoundationNetworking
 #endif
 
 /// OAuth 2.0 authorization-code flow with PKCE against Are.na.
@@ -113,13 +114,14 @@ extension AuthorizationRequest {
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
-        request.httpBody = Data(formEncoded([
-            ("grant_type", "authorization_code"),
-            ("client_id", configuration.clientID),
-            ("code", code),
-            ("redirect_uri", configuration.redirectURI.absoluteString),
-            ("code_verifier", pkce.verifier),
-        ]).utf8)
+        request.httpBody = Data(
+            formEncoded([
+                ("grant_type", "authorization_code"),
+                ("client_id", configuration.clientID),
+                ("code", code),
+                ("redirect_uri", configuration.redirectURI.absoluteString),
+                ("code_verifier", pkce.verifier),
+            ]).utf8)
 
         let (data, response) = try await transport.data(for: request)
         guard (200..<300).contains(response.statusCode) else {

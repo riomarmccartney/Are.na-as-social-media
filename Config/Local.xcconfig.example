@@ -1,0 +1,3 @@
+// Copy to Config/Local.xcconfig and fill in. That file is git-ignored.
+ARENAPOST_TEAM_ID = ABCDE12345
+ARENA_CLIENT_ID = your-are.na-oauth-client-id

@@ -4,6 +4,25 @@ A single-purpose iOS app that turns one Are.na channel into a personal "feed".
 The app opens straight into a Threads/Twitter-style composer; whatever you post
 becomes one Are.na block in the channel you picked in Settings.
 
+## Status
+
+| Milestone | State |
+| --- | --- |
+| M0 Setup | Done: `project.yml` (XcodeGen), `ArenaKit` package, swift-format + SwiftLint configs, CI |
+| M1 Auth & gate | Built: OAuth + PKCE sign-in, Keychain, `/me`, sign out, debug PAT login |
+| M2 Channel | Built: list/filter, paste link, create, `can.add_to` check |
+| M3 Text & link posts | Built: composer, link preview, toast, haptic, text draft restore |
+| M4 Image & video posts | Built: Photos/camera/Files, JPEG/MP4 prep, presign → PUT → create; real-upload checks pending |
+| M5 History | Built: feed, Mine/Everyone, refresh, paging, processing refresh, remove |
+| M6 Polish | Not started (background video upload, retry queue, attachment drafts) |
+| M7 Optional | Not started |
+
+Decided defaults: iOS 26, app name **ArenaPost**, bundle id
+`studio.upcoming.arenapost`, URL scheme `arenapost://` (D4, D5). v1
+simplifications: History opens non-video files in the browser (not Quick
+Look) and shows a plain placeholder instead of blurhash; HTTP revalidation
+(`ETag`) is left to `URLCache`.
+
 ---
 
 ## 1. Product scope

@@ -10,7 +10,8 @@ public enum ChannelLink {
 
         let lowercased = text.lowercased()
         if !lowercased.hasPrefix("http://"), !lowercased.hasPrefix("https://"),
-           lowercased.hasPrefix("are.na/") || lowercased.hasPrefix("www.are.na/") {
+            lowercased.hasPrefix("are.na/") || lowercased.hasPrefix("www.are.na/")
+        {
             text = "https://" + text
         }
 

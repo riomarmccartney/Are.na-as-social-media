@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  arenakit-linux:
+    name: ArenaKit (Linux) + format
+    runs-on: ubuntu-latest
+    container: swift:6.2-noble
+    steps:
+      - uses: actions/checkout@v4
+      - name: swift-format
+        run: >
+          swift format lint --recursive --strict --configuration .swift-format
+          ArenaPost Packages/ArenaKit/Sources Packages/ArenaKit/Tests Packages/ArenaKit/Package.swift
+      - name: Test
+        run: swift test --package-path Packages/ArenaKit
+
+  ios:
+    name: iOS app (lint + build) and ArenaKit (macOS)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: brew install xcodegen swiftlint
+      - name: SwiftLint
+        run: swiftlint lint --strict
+      - name: Test ArenaKit
+        run: swift test --package-path Packages/ArenaKit
+      - name: Generate project
+        run: xcodegen generate
+      - name: Build app
+        run: >
+          xcodebuild build
+          -project ArenaPost.xcodeproj
+          -scheme ArenaPost
+          -configuration Debug
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO

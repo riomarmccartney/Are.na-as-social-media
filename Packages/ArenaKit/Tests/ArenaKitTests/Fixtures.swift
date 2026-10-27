@@ -1,16 +1,16 @@
 // JSON shaped after the schemas in docs/arena/openapi.json.
 enum Fixtures {
     static let user = """
-    { "id": 42, "type": "User", "name": "Rio", "slug": "rio", "username": "rio",
-      "avatar": "https://d2w9rnfcy7mm78.cloudfront.net/42/avatar.jpg", "initials": "R" }
-    """
+        { "id": 42, "type": "User", "name": "Rio", "slug": "rio", "username": "rio",
+          "avatar": "https://d2w9rnfcy7mm78.cloudfront.net/42/avatar.jpg", "initials": "R" }
+        """
 
     static let me = """
-    { "id": 42, "type": "User", "name": "Rio", "slug": "rio", "avatar": null, "initials": "R",
-      "created_at": "2023-01-15T10:30:00Z", "updated_at": "2023-06-20T14:45:00Z",
-      "bio": null, "badge": null, "tier": "free", "email": "rio@example.com",
-      "counts": { "channels": 3 }, "_links": {} }
-    """
+        { "id": 42, "type": "User", "name": "Rio", "slug": "rio", "avatar": null, "initials": "R",
+          "created_at": "2023-01-15T10:30:00Z", "updated_at": "2023-06-20T14:45:00Z",
+          "bio": null, "badge": null, "tier": "free", "email": "rio@example.com",
+          "counts": { "channels": 3 }, "_links": {} }
+        """
 
     static func imageObject(filename: String = "IMG_4821.jpg") -> String {
         """
@@ -38,42 +38,51 @@ enum Fixtures {
         """
     }
 
-    static let textBlock = block(id: 1, type: "Text", extra: """
-    "content": { "markdown": "hello **world**", "html": "<p>hello</p>", "plain": "hello world" }
-    """)
+    static let textBlock = block(
+        id: 1, type: "Text",
+        extra: """
+            "content": { "markdown": "hello **world**", "html": "<p>hello</p>", "plain": "hello world" }
+            """)
 
     static let imageBlock = block(id: 2, type: "Image", extra: "\"image\": \(imageObject())")
 
-    static let linkBlock = block(id: 3, type: "Link", extra: """
-    "image": null, "content": null
-    """).replacingOccurrences(
+    static let linkBlock = block(
+        id: 3, type: "Link",
+        extra: """
+            "image": null, "content": null
+            """
+    ).replacingOccurrences(
         of: "\"source\": null",
         with: "\"source\": { \"url\": \"https://example.com/article\", \"title\": \"Article\", \"provider\": null }"
     )
 
-    static let videoAttachmentBlock = block(id: 4, type: "Attachment", extra: """
-    "attachment": { "filename": "trip.mp4", "content_type": "video/mp4", "file_size": 2048000,
-                    "file_extension": "mp4", "updated_at": null, "url": "https://attachments.are.na/4/trip.mp4" },
-    "image": null
-    """)
+    static let videoAttachmentBlock = block(
+        id: 4, type: "Attachment",
+        extra: """
+            "attachment": { "filename": "trip.mp4", "content_type": "video/mp4", "file_size": 2048000,
+                            "file_extension": "mp4", "updated_at": null, "url": "https://attachments.are.na/4/trip.mp4" },
+            "image": null
+            """)
 
-    static let embedBlock = block(id: 5, type: "Embed", extra: """
-    "embed": { "url": "https://www.youtube.com/embed/abc", "type": "youtube", "title": "Video",
-               "author_name": null, "author_url": null, "source_url": "https://www.youtube.com/watch?v=abc",
-               "width": 640, "height": 480, "html": "<iframe></iframe>", "thumbnail_url": "https://example.com/t.jpg" },
-    "image": null
-    """)
+    static let embedBlock = block(
+        id: 5, type: "Embed",
+        extra: """
+            "embed": { "url": "https://www.youtube.com/embed/abc", "type": "youtube", "title": "Video",
+                       "author_name": null, "author_url": null, "source_url": "https://www.youtube.com/watch?v=abc",
+                       "width": 640, "height": 480, "html": "<iframe></iframe>", "thumbnail_url": "https://example.com/t.jpg" },
+            "image": null
+            """)
 
     static let pendingBlock = block(id: 6, type: "PendingBlock", extra: "", state: "processing")
 
     static let channel = """
-    { "id": 123, "type": "Channel", "slug": "my-feed-abc", "title": "my feed",
-      "description": null, "state": "available", "visibility": "closed",
-      "created_at": "2023-01-15T10:30:00Z", "updated_at": "2023-01-15T14:45:00Z", "metadata": null,
-      "owner": \(user),
-      "counts": { "blocks": 42, "channels": 0, "contents": 42, "collaborators": 0 },
-      "_links": {}, "can": { "add_to": true, "update": true, "destroy": true, "manage_collaborators": true } }
-    """
+        { "id": 123, "type": "Channel", "slug": "my-feed-abc", "title": "my feed",
+          "description": null, "state": "available", "visibility": "closed",
+          "created_at": "2023-01-15T10:30:00Z", "updated_at": "2023-01-15T14:45:00Z", "metadata": null,
+          "owner": \(user),
+          "counts": { "blocks": 42, "channels": 0, "contents": 42, "collaborators": 0 },
+          "_links": {}, "can": { "add_to": true, "update": true, "destroy": true, "manage_collaborators": true } }
+        """
 
     static func page(_ items: [String], nextPage: Int? = 2, hasMore: Bool = true) -> String {
         """

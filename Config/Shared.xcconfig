@@ -1,0 +1,10 @@
+// Settings shared by Debug and Release. Per-developer values go in
+// Config/Local.xcconfig (git-ignored); copy Config/Local.xcconfig.example.
+
+ARENAPOST_BUNDLE_ID = studio.upcoming.arenapost
+ARENAPOST_TEAM_ID =
+// From https://www.are.na/developers/oauth/applications
+// (redirect URI: arenapost://oauth/callback).
+ARENA_CLIENT_ID =
+
+#include? "Local.xcconfig"

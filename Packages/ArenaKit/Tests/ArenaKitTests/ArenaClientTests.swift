@@ -1,9 +1,11 @@
 import Foundation
-#if canImport(FoundationNetworking)
-import FoundationNetworking
-#endif
 import Testing
+
 @testable import ArenaKit
+
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
 
 @Suite struct ArenaClientTests {
     private func client(_ transport: StubTransport) -> ArenaClient {
@@ -90,10 +92,13 @@ import Testing
     @Test func presignsAndUploads() async throws {
         let transport = StubTransport { request in
             if request.url?.host == "s3.amazonaws.com" { return (200, "") }
-            return (201, """
-            { "files": [{ "upload_url": "https://s3.amazonaws.com/arena_images-temp/uploads/u1/photo.jpg?sig=1",
-                          "key": "uploads/u1/photo.jpg", "content_type": "image/jpeg" }], "expires_in": 3600 }
-            """)
+            return (
+                201,
+                """
+                { "files": [{ "upload_url": "https://s3.amazonaws.com/arena_images-temp/uploads/u1/photo.jpg?sig=1",
+                              "key": "uploads/u1/photo.jpg", "content_type": "image/jpeg" }], "expires_in": 3600 }
+                """
+            )
         }
         let client = client(transport)
         let presigned = try await client.presignUpload(filename: "photo.jpg", contentType: "image/jpeg")
@@ -114,13 +119,20 @@ import Testing
 
     @Test(arguments: [
         (401, "{}", ArenaError.unauthorized),
-        (403, #"{ "error": "Forbidden", "code": 403, "details": { "message": "Read-only token" } }"#,
-         ArenaError.forbidden(message: "Read-only token")),
+        (
+            403, #"{ "error": "Forbidden", "code": 403, "details": { "message": "Read-only token" } }"#,
+            ArenaError.forbidden(message: "Read-only token")
+        ),
         (404, #"{ "error": "Not Found", "code": 404 }"#, ArenaError.notFound),
-        (429, #"{ "error": { "type": "rate_limit_exceeded", "message": "slow down", "tier": "free", "limit": 120, "retry_after": 65, "suggestions": [] } }"#,
-         ArenaError.rateLimited(retryAfter: 65)),
-        (500, #"{ "error": "Internal", "code": 500, "details": { "message": "Oops" } }"#,
-         ArenaError.server(status: 500, message: "Oops")),
+        (
+            429,
+            #"{ "error": { "type": "rate_limit_exceeded", "message": "slow down", "tier": "free", "limit": 120, "retry_after": 65, "suggestions": [] } }"#,
+            ArenaError.rateLimited(retryAfter: 65)
+        ),
+        (
+            500, #"{ "error": "Internal", "code": 500, "details": { "message": "Oops" } }"#,
+            ArenaError.server(status: 500, message: "Oops")
+        ),
     ])
     func mapsErrors(status: Int, body: String, expected: ArenaError) async {
         let transport = StubTransport(status: status, body: body)

@@ -1,9 +1,11 @@
 import Foundation
-#if canImport(FoundationNetworking)
-import FoundationNetworking
-#endif
 import Testing
+
 @testable import ArenaKit
+
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
 
 @Suite struct PKCETests {
     @Test func matchesRFC7636Example() {
@@ -65,7 +67,8 @@ import Testing
     }
 
     @Test func exchangesCodeWithFormBody() async throws {
-        let transport = StubTransport(body: #"{ "access_token": "tok", "token_type": "Bearer", "scope": "write", "created_at": 1702900000 }"#)
+        let transport = StubTransport(
+            body: #"{ "access_token": "tok", "token_type": "Bearer", "scope": "write", "created_at": 1702900000 }"#)
         let request = configuration.makeAuthorizationRequest()
         let token = try await request.exchange(code: "c/d+e", configuration: configuration, userAgent: "UA", transport: transport)
         #expect(token.accessToken == "tok")
@@ -74,9 +77,10 @@ import Testing
         #expect(sent.url == OAuthConfiguration.tokenURL)
         #expect(sent.httpMethod == "POST")
         #expect(sent.value(forHTTPHeaderField: "Content-Type") == "application/x-www-form-urlencoded")
-        let body = String(decoding: try #require(sent.httpBody), as: UTF8.self)
-        #expect(body == "grant_type=authorization_code&client_id=client-1&code=c%2Fd%2Be"
-            + "&redirect_uri=arenapost%3A%2F%2Foauth%2Fcallback&code_verifier=\(request.pkce.verifier)")
+        let body = try #require(sent.httpBody.flatMap { String(data: $0, encoding: .utf8) })
+        #expect(
+            body == "grant_type=authorization_code&client_id=client-1&code=c%2Fd%2Be"
+                + "&redirect_uri=arenapost%3A%2F%2Foauth%2Fcallback&code_verifier=\(request.pkce.verifier)")
         #expect(!body.contains("client_secret"))
     }
 

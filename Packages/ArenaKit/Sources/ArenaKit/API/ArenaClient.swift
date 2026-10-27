@@ -1,6 +1,7 @@
 import Foundation
+
 #if canImport(FoundationNetworking)
-import FoundationNetworking
+    import FoundationNetworking
 #endif
 
 /// Typed access to the Are.na v3 API for one signed-in account.
@@ -29,12 +30,15 @@ public struct ArenaClient: Sendable {
     /// Channels the user created, most recently updated first.
     /// `GET /v3/users/{id}/contents?type=Channel`
     public func channels(ofUser userID: Int, page: Int = 1, per: Int = 24) async throws -> Page<Channel> {
-        try await send(.get("users/\(userID)/contents", query: [
-            "type": "Channel",
-            "sort": "updated_at_desc",
-            "page": String(page),
-            "per": String(per),
-        ]))
+        try await send(
+            .get(
+                "users/\(userID)/contents",
+                query: [
+                    "type": "Channel",
+                    "sort": "updated_at_desc",
+                    "page": String(page),
+                    "per": String(per),
+                ]))
     }
 
     /// `GET /v3/channels/{id}` — accepts a numeric id or a slug.

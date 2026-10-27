@@ -39,7 +39,7 @@ public enum DraftClassifier {
             return nil
         }
         guard let url = URL(string: candidate),
-              let host = url.host, host.contains("."), !host.hasPrefix("."), !host.hasSuffix(".")
+            let host = url.host, host.contains("."), !host.hasPrefix("."), !host.hasSuffix(".")
         else { return nil }
         return url
     }

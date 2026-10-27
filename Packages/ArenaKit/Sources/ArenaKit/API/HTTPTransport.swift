@@ -1,6 +1,7 @@
 import Foundation
+
 #if canImport(FoundationNetworking)
-import FoundationNetworking
+    import FoundationNetworking
 #endif
 
 /// The network layer ``ArenaClient`` talks through. Tests swap in a stub.
@@ -111,7 +112,7 @@ private final class ProgressDelegate: NSObject, URLSessionTaskDelegate, @uncheck
         totalBytesExpectedToSend: Int64
     ) {
         guard totalBytesExpectedToSend > 0,
-              let handler = lock.withLock({ handlers[task.taskIdentifier] })
+            let handler = lock.withLock({ handlers[task.taskIdentifier] })
         else { return }
         handler(Double(totalBytesSent) / Double(totalBytesExpectedToSend))
     }

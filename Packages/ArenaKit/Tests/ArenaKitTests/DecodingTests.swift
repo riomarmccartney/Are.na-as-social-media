@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import ArenaKit
 
 @Suite struct DecodingTests {
@@ -22,10 +23,12 @@ import Testing
     }
 
     @Test func decodesEveryBlockType() throws {
-        let page = try decode(Page<ContentItem>.self, Fixtures.page([
-            Fixtures.textBlock, Fixtures.imageBlock, Fixtures.linkBlock,
-            Fixtures.videoAttachmentBlock, Fixtures.embedBlock, Fixtures.pendingBlock, Fixtures.channel,
-        ]))
+        let page = try decode(
+            Page<ContentItem>.self,
+            Fixtures.page([
+                Fixtures.textBlock, Fixtures.imageBlock, Fixtures.linkBlock,
+                Fixtures.videoAttachmentBlock, Fixtures.embedBlock, Fixtures.pendingBlock, Fixtures.channel,
+            ]))
         #expect(page.data.count == 7)
         #expect(page.meta.hasMorePages)
         #expect(page.meta.nextPage == 2)

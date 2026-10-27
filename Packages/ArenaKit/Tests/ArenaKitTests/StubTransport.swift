@@ -1,8 +1,10 @@
 import Foundation
-#if canImport(FoundationNetworking)
-import FoundationNetworking
-#endif
+
 @testable import ArenaKit
+
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
 
 /// Records requests and answers them from a handler.
 final class StubTransport: HTTPTransport, @unchecked Sendable {

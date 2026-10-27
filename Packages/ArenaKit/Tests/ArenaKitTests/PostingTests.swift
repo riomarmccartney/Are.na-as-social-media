@@ -1,9 +1,11 @@
 import Foundation
-#if canImport(FoundationNetworking)
-import FoundationNetworking
-#endif
 import Testing
+
 @testable import ArenaKit
+
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
 
 @Suite struct DraftClassifierTests {
     @Test func emptyDraftIsNothing() {
@@ -38,7 +40,7 @@ import Testing
 
 @Suite struct AttachmentNamingTests {
     let utc = TimeZone(identifier: "UTC")!
-    let date = Date(timeIntervalSince1970: 1_793_111_525) // 2026-10-27 14:32:05 UTC
+    let date = Date(timeIntervalSince1970: 1_793_111_525)  // 2026-10-27 14:32:05 UTC
 
     @Test func keepsBaseNameAndUsesUploadedExtension() {
         #expect(AttachmentNaming.uploadFilename(originalFilename: "IMG_4821.HEIC", fileExtension: "jpg") == "IMG_4821.jpg")
@@ -48,8 +50,12 @@ import Testing
     }
 
     @Test func fallsBackToTimestamp() {
-        #expect(AttachmentNaming.uploadFilename(originalFilename: nil, fileExtension: "jpg", date: date, timeZone: utc) == "IMG_20261027_143205.jpg")
-        #expect(AttachmentNaming.uploadFilename(originalFilename: "  ", fileExtension: "mp4", date: date, timeZone: utc) == "IMG_20261027_143205.mp4")
+        #expect(
+            AttachmentNaming.uploadFilename(originalFilename: nil, fileExtension: "jpg", date: date, timeZone: utc)
+                == "IMG_20261027_143205.jpg")
+        #expect(
+            AttachmentNaming.uploadFilename(originalFilename: "  ", fileExtension: "mp4", date: date, timeZone: utc)
+                == "IMG_20261027_143205.mp4")
     }
 
     @Test func usesLocalTimeZone() {
@@ -121,10 +127,13 @@ import Testing
         let transport = StubTransport { request in
             switch (request.httpMethod, request.url?.path) {
             case ("POST", "/v3/uploads/presign"):
-                return (201, """
-                { "files": [{ "upload_url": "https://s3.amazonaws.com/arena_images-temp/uploads/u1/IMG_4821.jpg?sig=1",
-                              "key": "uploads/u1/IMG_4821.jpg", "content_type": "image/jpeg" }], "expires_in": 3600 }
-                """)
+                return (
+                    201,
+                    """
+                    { "files": [{ "upload_url": "https://s3.amazonaws.com/arena_images-temp/uploads/u1/IMG_4821.jpg?sig=1",
+                                  "key": "uploads/u1/IMG_4821.jpg", "content_type": "image/jpeg" }], "expires_in": 3600 }
+                    """
+                )
             case ("PUT", _):
                 return (200, "")
             default:
@@ -152,7 +161,10 @@ import Testing
     @Test func mediaWithoutTextHasNoDescription() async throws {
         let transport = StubTransport { request in
             if request.url?.path == "/v3/uploads/presign" {
-                return (201, #"{ "files": [{ "upload_url": "https://s3.amazonaws.com/x?s", "key": "k/trip.mp4", "content_type": "video/mp4" }], "expires_in": 3600 }"#)
+                return (
+                    201,
+                    #"{ "files": [{ "upload_url": "https://s3.amazonaws.com/x?s", "key": "k/trip.mp4", "content_type": "video/mp4" }], "expires_in": 3600 }"#
+                )
             }
             return request.httpMethod == "PUT" ? (200, "") : (201, Fixtures.videoAttachmentBlock)
         }
@@ -167,7 +179,10 @@ import Testing
     @Test func failedUploadDoesNotCreateBlock() async {
         let transport = StubTransport { request in
             if request.url?.path == "/v3/uploads/presign" {
-                return (201, #"{ "files": [{ "upload_url": "https://s3.amazonaws.com/x?s", "key": "k/a.jpg", "content_type": "image/jpeg" }], "expires_in": 3600 }"#)
+                return (
+                    201,
+                    #"{ "files": [{ "upload_url": "https://s3.amazonaws.com/x?s", "key": "k/a.jpg", "content_type": "image/jpeg" }], "expires_in": 3600 }"#
+                )
             }
             return (403, "<Error>AccessDenied</Error>")
         }

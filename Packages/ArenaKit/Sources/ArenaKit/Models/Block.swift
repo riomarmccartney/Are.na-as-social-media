@@ -130,7 +130,9 @@ public struct Block: Decodable, Sendable, Hashable, Identifiable {
     public let createdAt: Date
     public let user: User
     public let source: Source?
-    public let connection: Connection?
+    /// Kept mutable so a refreshed copy (from `GET /v3/blocks/{id}`, which has
+    /// no connection) can carry over the one from channel contents.
+    public var connection: Connection?
     public let content: Content
 
     /// The block's page on Are.na.
