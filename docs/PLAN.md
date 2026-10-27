@@ -24,8 +24,12 @@ becomes one Are.na block in the channel you picked in Settings.
   | One file (PDF, audio…)                   | `Attachment`               |
 
   When an attachment is added, the other attachment buttons are disabled until
-  it is removed. Text typed next to an attachment becomes the block's
-  **description** (caption). See decision D1.
+  it is removed.
+- **Attachment posts (image, video, file)** map to the block like this (D1):
+  - **title** = the attached file's name (e.g. `IMG_4821.jpg`, `trip.mp4`,
+    `zine.pdf`). See §3.4 for how it's found.
+  - **description** = the text typed in the composer, if any (markdown kept).
+  - Attachment with no text → title only, empty description.
 - **Channel is set in Settings.** All posts go to that channel.
 - **History is one tap away.** A button in the composer opens your past blocks
   rendered as posts.
@@ -73,7 +77,9 @@ Layout, top to bottom:
   - Multiline `TextField(axis: .vertical)` focused on appear
     (`@FocusState`), placeholder "Post to my-feed…".
   - Attachment preview under the text: image thumbnail / video thumbnail with
-    duration / file chip, with an ✕ to remove.
+    duration / file chip, with an ✕ to remove. The file name (which becomes
+    the block title) is shown under it, and the text field placeholder changes
+    to "Add a description…".
   - When the text is a lone URL: live link preview card (`LPMetadataProvider`)
     so you see what Are.na will scrape.
 - **Keyboard accessory bar** (`.toolbar { ToolbarItemGroup(placement: .keyboard) }`
@@ -100,7 +106,10 @@ Layout, top to bottom:
   - Image → aspect-fit image (display size URL), tap to full-screen zoom.
   - Attachment (video) → `VideoPlayer` with poster frame; other files → file chip.
   - Link / Embed → preview card (thumbnail, title, host).
-  - Footer: relative time ("3h"), description if any.
+  - Image / Attachment: the **description** is shown as the post text above the
+    media (like a tweet with a photo); the **title** (filename) is shown as
+    small secondary metadata under the media.
+  - Footer: relative time ("3h").
 - Pull to refresh, infinite scroll (load next page when the last 5 cards appear).
 - Context menu: Copy text/URL, Share, Open in Are.na, Remove from channel.
 - Empty state: "Nothing here yet — your posts will show up here."
@@ -110,7 +119,6 @@ Layout, top to bottom:
 - **Account**: avatar, name, `@slug`, Sign out (clears Keychain + caches).
 - **Channel**: current channel → ChannelPickerView.
 - **Posting**
-  - Use text as caption when attaching media (D1) — toggle.
   - Strip location from photos — toggle, default on.
   - Video quality: Original / High (1080p) / Compact (720p).
 - **About**: version, link to the repo, link to Are.na.
@@ -181,23 +189,46 @@ Rate limits: the docs ask clients to space out write operations. One post =
 
 ```
 ComposerDraft
-  └─ classify()  → .text(String) | .link(URL) | .media(LocalAsset, caption?)
+  └─ classify()  → .text(String) | .link(URL) | .media(LocalAsset, description?)
        ├─ text/link → POST /v3/blocks { value, channel }            → done
        └─ media
             1. prepare: image → JPEG/HEIC→JPEG, optional EXIF GPS strip, max 4096px
                         video → AVAssetExportSession → .mp4 (H.264/HEVC per quality)
             2. POST presign { filename, content_type }  → { upload_url, … }
             3. PUT bytes to upload_url (URLSession upload task, progress → UI)
-            4. POST /v3/blocks { value: <S3 URL>, channel, description: caption }
+            4. POST /v3/blocks { value: <S3 URL>, channel,
+                                 title: <file name>, description: <composer text> }
             5. Block may arrive with a "processing" state; History refetches it
 ```
 
 `classify()` rules (unit-tested):
 
-- Attachment present → `.media` (text becomes caption if D1 is on, otherwise
-  the Post button is disabled until text is cleared — pick one in D1).
+- Attachment present → `.media`; trimmed composer text (if non-empty) becomes
+  the description, the file name becomes the title. A URL typed next to an
+  attachment stays plain description text — it does not create a Link block.
 - Trimmed text is a single `http(s)` URL (via `NSDataDetector`) → `.link`.
 - Otherwise → `.text` (markdown is passed as-is).
+
+### 3.4 Where the attachment's file name (block title) comes from
+
+| Source | How the name is read | Example title |
+| --- | --- | --- |
+| Files app (`.fileImporter`) | `url.lastPathComponent` | `zine.pdf` |
+| Photos library (`PhotosPicker`) | `PhotosPickerItem.itemIdentifier` → `PHAsset` → `PHAssetResource.assetResources(for:)` → `originalFilename`. Needs Photos read access (limited access is enough for the picked item). | `IMG_4821.HEIC` → `IMG_4821.jpg` |
+| Camera capture | No file name exists, so generate one from the capture time | `IMG_20261027_143205.jpg` / `.mp4` |
+
+Rules:
+
+- The title is the name of the file **as it is uploaded**: when step 1
+  converts the file (HEIC → JPEG, MOV → MP4) the base name is kept and the
+  extension changes, so title, presign `filename` and the actual file always
+  agree.
+- If the Photos name can't be read (access denied, iCloud-only asset), fall
+  back to the camera-style timestamp name. Posting is never blocked by this.
+- The composer's attachment preview shows the file name under the thumbnail,
+  so you see the title before posting.
+- The title is not editable in v1. Editing title/description later can use
+  `PUT /v3/blocks/{id}` from History.
 
 ---
 
@@ -238,9 +269,9 @@ Packages/ArenaKit/                 local Swift package, pure Foundation (+Crypto
     Endpoints.swift
     Models/      User, Channel, Block (enum by type), Paginated<T>
     Auth/        OAuthConfig, PKCE, TokenStore (protocol) + KeychainTokenStore
-    Posting/     DraftClassifier, Uploader (presign + S3 PUT), PostService
+    Posting/     DraftClassifier, AttachmentNaming (title from file name), Uploader (presign + S3 PUT), PostService
   Tests/ArenaKitTests/
-    PKCETests, DraftClassifierTests, BlockDecodingTests (fixtures from openapi examples),
+    PKCETests, DraftClassifierTests, AttachmentNamingTests, BlockDecodingTests (fixtures from openapi examples),
     ArenaClientTests (URLProtocol stub)
 ```
 
@@ -299,7 +330,7 @@ decoding can be checked against real JSON fixtures.
 | M1 | Auth & gate | Sign in via OAuth+PKCE, token in Keychain, `/me` loaded, sign out works, RootView routing tested |
 | M2 | Channel | Picker lists/searches channels, can create one, selection persisted, invalid channel handled |
 | M3 | Text & link posts | Composer focused on launch; text → Text block, URL → Link block; toast; draft restore |
-| M4 | Image & video posts | PhotosPicker + camera + files; prep/export; presign → PUT → create; progress; caption (D1); size checks |
+| M4 | Image & video posts | PhotosPicker + camera + files; prep/export; presign → PUT → create; progress; filename → title, text → description (D1); size checks |
 | M5 | History | Paginated feed with per-type cards, Mine/Everyone filter, refresh, context menu incl. remove |
 | M6 | Polish | Background video upload + resume, retry queue, haptics, empty/error states, accessibility pass, app icon |
 | M7 | Optional | Share Extension ("Post to my-feed" from Safari/Photos), App Intent / Shortcut + Action Button, Lock Screen widget that opens the composer |
@@ -311,9 +342,8 @@ M1–M3 together are the smallest useful app; M4 is where most of the risk is
 
 ## 7. Decisions to make
 
-- **D1 — Text with an attachment.** Recommended: use it as the block's
-  description (caption), toggle in Settings. Alternative: disallow text when an
-  attachment is present.
+- **D1 — Text with an attachment.** ✅ Decided: composer text → block
+  `description`, attached file name → block `title` (§1, §3.4).
 - **D2 — History default filter.** Recommended: "Mine", with "Everyone" one tap
   away (matters only for collaborative channels).
 - **D3 — One channel or quick-switch favorites.** Recommended: one channel in
