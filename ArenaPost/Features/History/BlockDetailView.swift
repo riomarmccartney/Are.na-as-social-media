@@ -25,6 +25,11 @@ struct BlockDetailView: View {
     @State private var deleteError: String?
     @State private var showingImage = false
     @State private var showingVideo = false
+    /// The text being edited in place; `nil` when not editing.
+    @State private var editingText: String?
+    @State private var isSavingText = false
+    @State private var textError: String?
+    @FocusState private var isTextFocused: Bool
 
     init(
         block: Block,
@@ -81,11 +86,27 @@ struct BlockDetailView: View {
             .navigationTitle(kindTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                if editingText != nil {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { stopEditingText() }
+                            .disabled(isSavingText)
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        if isSavingText {
+                            ProgressView()
+                        } else {
+                            Button("Save") { Task { await saveText() } }
+                                .disabled(!canSaveText)
+                        }
+                    }
+                } else {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { dismiss() }
+                    }
                 }
             }
         }
+        .interactiveDismissDisabled(editingText != nil)
         .confirmationDialog(
             "Delete from \(channelTitle ?? "channel")?", isPresented: $confirmingDelete, titleVisibility: .visible
         ) {
@@ -132,13 +153,47 @@ struct BlockDetailView: View {
 
         switch block.content {
         case .text(let markdown):
-            MarkdownText(markdown.markdown)
-                .font(.arena(17))
-                .foregroundStyle(.arenaBodyInk)
-                .textSelection(.enabled)
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .arenaFrame()
+            if let draft = Binding($editingText) {
+                VStack(alignment: .leading, spacing: 8) {
+                    TextEditor(text: draft)
+                        .font(.arena(17))
+                        .foregroundStyle(.arenaBodyInk)
+                        .scrollContentBackground(.hidden)
+                        .focused($isTextFocused)
+                        .frame(minHeight: 160)
+                        // TextEditor insets its text by about 5 pt, so this
+                        // lines it up with the text before editing.
+                        .padding(11)
+                        .arenaFrame(.arenaInk)
+                        .disabled(isSavingText)
+                        .onAppear { isTextFocused = true }
+                    if let textError {
+                        Text(textError)
+                            .font(.arenaSmall)
+                            .foregroundStyle(.arenaPrivate)
+                    }
+                }
+            } else if onSave != nil {
+                // Tapping the text starts editing it right here.
+                MarkdownText(markdown.markdown)
+                    .font(.arena(17))
+                    .foregroundStyle(.arenaBodyInk)
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .arenaFrame()
+                    .contentShape(Rectangle())
+                    .onTapGesture { startEditingText(markdown.markdown) }
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityHint("Edits the text")
+            } else {
+                MarkdownText(markdown.markdown)
+                    .font(.arena(17))
+                    .foregroundStyle(.arenaBodyInk)
+                    .textSelection(.enabled)
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .arenaFrame()
+            }
 
         case .image(let image):
             Button {
@@ -193,6 +248,40 @@ struct BlockDetailView: View {
 
         case .unsupported:
             EmptyView()
+        }
+    }
+
+    private var originalText: String? {
+        if case .text(let markdown) = block.content { return markdown.markdown }
+        return nil
+    }
+
+    private var canSaveText: Bool {
+        guard let editingText else { return false }
+        return editingText != originalText && !editingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func startEditingText(_ text: String) {
+        textError = nil
+        editingText = text
+    }
+
+    private func stopEditingText() {
+        isTextFocused = false
+        editingText = nil
+        textError = nil
+    }
+
+    private func saveText() async {
+        guard let onSave, let text = editingText, canSaveText else { return }
+        isSavingText = true
+        textError = nil
+        defer { isSavingText = false }
+        do {
+            block = try await onSave(BlockUpdate(content: text))
+            stopEditingText()
+        } catch {
+            textError = error.localizedDescription
         }
     }
 
