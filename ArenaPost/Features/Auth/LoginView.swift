@@ -20,7 +20,7 @@ struct LoginView: View {
                 .frame(width: 26, height: 30)
                 .accessibilityHidden(true)
 
-            Text("ArenaPost is")
+            Text("Chirp is")
                 .font(.arenaTitle)
                 .foregroundStyle(.arenaInk)
 

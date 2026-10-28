@@ -1,7 +1,8 @@
 # Are.na-as-social-media
 
-**ArenaPost** — an iOS app that opens straight into a Threads-style composer and
-posts each entry as a block to one Are.na channel.
+**Chirp** — an iOS app that opens straight into a Threads-style composer and
+posts each entry as a block to one Are.na channel. (The Xcode project, targets
+and bundle ID are still named ArenaPost.)
 
 - Text → Text block, a lone URL → Link block, a photo/video/file → Image or
   Attachment block (file name = block title, your text = description).

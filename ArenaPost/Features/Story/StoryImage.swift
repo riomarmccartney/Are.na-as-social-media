@@ -192,7 +192,7 @@ enum StoryExporter {
         var errorDescription: String? {
             switch self {
             case .render: "Couldn't make the story image."
-            case .noPhotosAccess: "Allow ArenaPost to add photos in Settings to save story images."
+            case .noPhotosAccess: "Allow Chirp to add photos in Settings to save story images."
             }
         }
     }

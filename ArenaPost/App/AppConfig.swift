@@ -23,6 +23,6 @@ enum AppConfig {
 
     /// Are.na asks API clients to name themselves and a contact.
     static var userAgent: String {
-        "ArenaPost/\(version) (+\(repositoryURL.absoluteString))"
+        "Chirp/\(version) (+\(repositoryURL.absoluteString))"
     }
 }
