@@ -82,6 +82,53 @@ public struct ArenaClient: Sendable {
         try await send(.post("blocks", body: newBlock))
     }
 
+    /// Oldest first by default, so they read as a conversation.
+    /// `GET /v3/blocks/{id}/comments`
+    public func comments(
+        onBlock blockID: Int,
+        newestFirst: Bool = false,
+        page: Int = 1,
+        per: Int = 50
+    ) async throws -> Page<Comment> {
+        try await send(
+            .get(
+                "blocks/\(blockID)/comments",
+                query: [
+                    "sort": newestFirst ? "created_at_desc" : "created_at_asc",
+                    "page": String(page),
+                    "per": String(per),
+                ]
+            ))
+    }
+
+    /// `POST /v3/blocks/{id}/comments`
+    public func addComment(onBlock blockID: Int, body: String) async throws -> Comment {
+        try await send(.post("blocks/\(blockID)/comments", body: NewComment(body: body)))
+    }
+
+    /// Only the comment's author can delete it.
+    /// `DELETE /v3/comments/{id}`
+    public func deleteComment(id: Int) async throws {
+        _ = try await perform(.delete("comments/\(id)"))
+    }
+
+    /// Channels the block has been connected to, newest first.
+    /// `GET /v3/blocks/{id}/connections`
+    public func connections(ofBlock blockID: Int, page: Int = 1, per: Int = 24) async throws -> Page<Channel> {
+        try await send(
+            .get(
+                "blocks/\(blockID)/connections",
+                query: ["sort": "created_at_desc", "page": String(page), "per": String(per)]
+            ))
+    }
+
+    /// Changes a block's title, description, text or alt text. Only the
+    /// block's owner can do this. The response has no `connection`.
+    /// `PUT /v3/blocks/{id}`
+    public func updateBlock(id: Int, _ update: BlockUpdate) async throws -> Block {
+        try await send(.put("blocks/\(id)", body: update))
+    }
+
     /// Removes a block from a channel; the block itself is kept.
     /// `DELETE /v3/connections/{id}`
     public func removeConnection(id: Int) async throws {
@@ -173,6 +220,37 @@ public struct NewBlock: Encodable, Sendable, Equatable {
     }
 }
 
+/// Body for `PUT /v3/blocks/{id}`. Fields left `nil` are not sent, so they
+/// stay as they are; send an empty string to clear one.
+public struct BlockUpdate: Encodable, Sendable, Equatable {
+    public var title: String?
+    public var description: String?
+    /// Text blocks only.
+    public var content: String?
+    /// Image blocks only.
+    public var altText: String?
+
+    public init(title: String? = nil, description: String? = nil, content: String? = nil, altText: String? = nil) {
+        self.title = title
+        self.description = description
+        self.content = content
+        self.altText = altText
+    }
+
+    public var isEmpty: Bool {
+        title == nil && description == nil && content == nil && altText == nil
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case title, description, content
+        case altText = "alt_text"
+    }
+}
+
+struct NewComment: Encodable {
+    let body: String
+}
+
 struct NewChannel: Encodable {
     let title: String
     let visibility: Channel.Visibility
@@ -226,6 +304,7 @@ struct Endpoint {
     enum Method: String {
         case get = "GET"
         case post = "POST"
+        case put = "PUT"
         case delete = "DELETE"
     }
 
@@ -240,6 +319,10 @@ struct Endpoint {
 
     static func post(_ path: String, body: any Encodable) -> Endpoint {
         Endpoint(method: .post, path: path, body: body)
+    }
+
+    static func put(_ path: String, body: any Encodable) -> Endpoint {
+        Endpoint(method: .put, path: path, body: body)
     }
 
     static func delete(_ path: String) -> Endpoint {

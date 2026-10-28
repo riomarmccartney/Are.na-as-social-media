@@ -80,6 +80,72 @@ import Testing
         #expect(Set(body.keys) == ["value", "channels"])
     }
 
+    @Test func updatesBlockWithOnlyChangedFields() async throws {
+        let transport = StubTransport(body: Fixtures.textBlock)
+        let block = try await client(transport).updateBlock(id: 7, BlockUpdate(title: "", content: "new text"))
+
+        let request = try #require(transport.requests.first?.request)
+        #expect(request.httpMethod == "PUT")
+        #expect(request.url?.path == "/v3/blocks/7")
+        let body = try #require(request.jsonBody)
+        #expect(Set(body.keys) == ["title", "content"])
+        #expect(body["title"] as? String == "")
+        #expect(body["content"] as? String == "new text")
+        #expect(block.id == 1)
+    }
+
+    @Test func blockUpdateEncodesAltTextInSnakeCase() throws {
+        let data = try JSONEncoder().encode(BlockUpdate(altText: "A cat"))
+        let body = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(body as? [String: String] == ["alt_text": "A cat"])
+        #expect(BlockUpdate().isEmpty)
+    }
+
+    @Test func listsCommentsOldestFirst() async throws {
+        let transport = StubTransport(body: Fixtures.page([Fixtures.comment]))
+        let page = try await client(transport).comments(onBlock: 7)
+
+        let request = try #require(transport.requests.first?.request)
+        #expect(request.url?.path == "/v3/blocks/7/comments")
+        #expect(request.queryItems == ["sort": "created_at_asc", "page": "1", "per": "50"])
+        #expect(page.data.first?.id == 12345)
+    }
+
+    @Test func listsNewestCommentsFirst() async throws {
+        let transport = StubTransport(body: Fixtures.page([Fixtures.comment]))
+        _ = try await client(transport).comments(onBlock: 7, newestFirst: true, per: 5)
+        #expect(transport.requests.first?.request.queryItems == ["sort": "created_at_desc", "page": "1", "per": "5"])
+    }
+
+    @Test func addsComment() async throws {
+        let transport = StubTransport(status: 201, body: Fixtures.comment)
+        _ = try await client(transport).addComment(onBlock: 7, body: "nice")
+
+        let request = try #require(transport.requests.first?.request)
+        #expect(request.httpMethod == "POST")
+        #expect(request.url?.path == "/v3/blocks/7/comments")
+        #expect(request.jsonBody as? [String: String] == ["body": "nice"])
+    }
+
+    @Test func deletesComment() async throws {
+        let transport = StubTransport(status: 204, body: "")
+        try await client(transport).deleteComment(id: 12345)
+
+        let request = try #require(transport.requests.first?.request)
+        #expect(request.httpMethod == "DELETE")
+        #expect(request.url?.path == "/v3/comments/12345")
+    }
+
+    @Test func listsBlockConnections() async throws {
+        let transport = StubTransport(body: Fixtures.page([Fixtures.channel]))
+        let page = try await client(transport).connections(ofBlock: 7)
+
+        let request = try #require(transport.requests.first?.request)
+        #expect(request.url?.path == "/v3/blocks/7/connections")
+        #expect(request.queryItems == ["sort": "created_at_desc", "page": "1", "per": "24"])
+        #expect(page.data.first?.id == 123)
+    }
+
     @Test func removesConnection() async throws {
         let transport = StubTransport(status: 204, body: "")
         try await client(transport).removeConnection(id: 1001)

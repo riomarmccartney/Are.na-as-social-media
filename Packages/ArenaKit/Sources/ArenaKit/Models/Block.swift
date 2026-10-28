@@ -111,6 +111,14 @@ public struct Block: Decodable, Sendable, Hashable, Identifiable {
         }
     }
 
+    /// What the signed-in user may do with the block.
+    public struct Abilities: Decodable, Sendable, Hashable {
+        /// Update or delete it.
+        public let manage: Bool
+        public let comment: Bool
+        public let connect: Bool
+    }
+
     public enum Content: Sendable, Hashable {
         case text(Markdown)
         case image(Image)
@@ -134,6 +142,9 @@ public struct Block: Decodable, Sendable, Hashable, Identifiable {
     /// no connection) can carry over the one from channel contents.
     public var connection: Connection?
     public let content: Content
+    public let commentCount: Int?
+    /// `nil` when Are.na leaves it out.
+    public let can: Abilities?
 
     /// The block's page on Are.na.
     public var webURL: URL { URL(string: "https://www.are.na/block/\(id)")! }
@@ -149,6 +160,8 @@ public struct Block: Decodable, Sendable, Hashable, Identifiable {
         case createdAt = "created_at"
         case user, source, connection
         case content, image, attachment, embed
+        case commentCount = "comment_count"
+        case can
     }
 
     public init(from decoder: any Decoder) throws {
@@ -161,6 +174,8 @@ public struct Block: Decodable, Sendable, Hashable, Identifiable {
         user = try container.decode(User.self, forKey: .user)
         source = try? container.decodeIfPresent(Source.self, forKey: .source)
         connection = try container.decodeIfPresent(Connection.self, forKey: .connection)
+        commentCount = try? container.decodeIfPresent(Int.self, forKey: .commentCount)
+        can = try? container.decodeIfPresent(Abilities.self, forKey: .can)
 
         let type = try container.decode(String.self, forKey: .type)
         // Previews are decorative, so a malformed one never fails the block.

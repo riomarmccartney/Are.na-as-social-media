@@ -76,6 +76,24 @@ import Testing
         #expect(abs(block.createdAt.timeIntervalSince1970 - 1_793_097_000.123) < 0.001)
     }
 
+    @Test func decodesCommentCountAndAbilities() throws {
+        let block = try decode(Block.self, Fixtures.commentedBlock)
+        #expect(block.commentCount == 3)
+        #expect(block.can?.manage == false)
+        #expect(block.can?.comment == true)
+
+        let plain = try decode(Block.self, Fixtures.textBlock)
+        #expect(plain.commentCount == 0)
+        #expect(plain.can == nil)
+    }
+
+    @Test func decodesComment() throws {
+        let comment = try decode(ArenaKit.Comment.self, Fixtures.comment)
+        #expect(comment.id == 12345)
+        #expect(comment.body?.markdown == "Love this @rio")
+        #expect(comment.user.slug == "rio")
+    }
+
     @Test func unknownBlockTypeIsUnsupported() throws {
         let block = try decode(Block.self, Fixtures.block(id: 9, type: "Hologram", extra: ""))
         #expect(block.content == .unsupported(type: "Hologram"))

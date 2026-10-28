@@ -25,11 +25,11 @@ enum Fixtures {
         """
     }
 
-    static func block(id: Int, type: String, extra: String, state: String = "available") -> String {
+    static func block(id: Int, type: String, extra: String, state: String = "available", commentCount: Int = 0) -> String {
         """
         { "id": \(id), "base_type": "Block", "type": "\(type)", "title": "Title \(id)",
           "description": { "markdown": "desc **\(id)**", "html": "<p>desc</p>", "plain": "desc" },
-          "state": "\(state)", "visibility": "public", "comment_count": 0,
+          "state": "\(state)", "visibility": "public", "comment_count": \(commentCount),
           "created_at": "2026-10-27T10:30:00.123Z", "updated_at": "2026-10-27T10:30:00Z",
           "user": \(user), "metadata": null, "source": null, "_links": {},
           "connection": { "id": \(id + 1000), "position": 1, "pinned": false, "metadata": null,
@@ -74,6 +74,21 @@ enum Fixtures {
             """)
 
     static let pendingBlock = block(id: 6, type: "PendingBlock", extra: "", state: "processing")
+
+    static let commentedBlock = block(
+        id: 7, type: "Text",
+        extra: """
+            "can": { "manage": false, "comment": true, "connect": true },
+            "content": { "markdown": "hi", "html": "<p>hi</p>", "plain": "hi" }
+            """,
+        commentCount: 3)
+
+    static let comment = """
+        { "id": 12345, "type": "Comment",
+          "body": { "markdown": "Love this @rio", "html": "<p>Love this</p>", "plain": "Love this" },
+          "created_at": "2026-10-27T11:00:00Z", "updated_at": "2026-10-27T11:00:00Z",
+          "user": \(user), "_links": {} }
+        """
 
     static let channel = """
         { "id": 123, "type": "Channel", "slug": "my-feed-abc", "title": "my feed",
