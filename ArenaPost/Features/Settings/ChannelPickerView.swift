@@ -21,24 +21,29 @@ struct ChannelPickerView: View {
     var body: some View {
         List {
             Section {
-                Button {
-                    showingNewChannel = true
-                } label: {
-                    Label("New channel…", systemImage: "plus")
+                VStack(alignment: .leading, spacing: 12) {
+                    if isOnboarding {
+                        Text("Everything you post goes to this channel. You can change it later in Settings.")
+                            .font(.arenaSmall)
+                            .foregroundStyle(.arenaSecondary)
+                    }
+                    HStack(spacing: 8) {
+                        Button("New channel") {
+                            showingNewChannel = true
+                        }
+                        .buttonStyle(.arenaPrimary)
+                        Button("Paste channel link") {
+                            linkText = ""
+                            showingLinkEntry = true
+                        }
+                        .buttonStyle(.arena)
+                    }
                 }
-                Button {
-                    linkText = ""
-                    showingLinkEntry = true
-                } label: {
-                    Label("Paste channel link…", systemImage: "link")
-                }
-            } footer: {
-                if isOnboarding {
-                    Text("Everything you post goes to this channel. You can change it later in Settings.")
-                }
+                .listRowSeparator(.hidden)
             }
+            .listRowBackground(Color.arenaBackground)
 
-            Section("Your channels") {
+            Section {
                 ForEach(filteredChannels) { channel in
                     Button {
                         Task { await choose(channel) }
@@ -49,7 +54,7 @@ struct ChannelPickerView: View {
                             isValidating: validatingID == channel.id
                         )
                     }
-                    .tint(.primary)
+                    .buttonStyle(.plain)
                     .onAppear {
                         if channel.id == model.channels.last?.id {
                             Task { await loadMore() }
@@ -61,14 +66,24 @@ struct ChannelPickerView: View {
                         .frame(maxWidth: .infinity)
                 } else if model.channels.isEmpty, model.errorMessage == nil {
                     Text("You haven't created any channels yet.")
-                        .foregroundStyle(.secondary)
+                        .font(.arenaSmall)
+                        .foregroundStyle(.arenaSecondary)
                 }
                 if let message = model.errorMessage {
                     Text(message)
-                        .foregroundStyle(.red)
+                        .font(.arenaSmall)
+                        .foregroundStyle(.arenaPrivate)
                 }
+            } header: {
+                ArenaSectionHeader(title: "Your channels")
+                    .textCase(nil)
             }
+            .listRowBackground(Color.arenaBackground)
+            .listRowSeparatorTint(.arenaHairline)
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(.arenaBackground)
         .searchable(text: $filter, prompt: "Filter your channels")
         .navigationTitle(isOnboarding ? "Choose a channel" : "Channel")
         .toolbar {
@@ -172,8 +187,10 @@ private struct ChannelRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(channel.title)
+                    .font(.arenaBodyBold)
+                    .foregroundStyle(channel.visibility.color)
                     .lineLimit(1)
                 HStack(spacing: 6) {
                     if let visibility = channel.visibility {
@@ -183,18 +200,20 @@ private struct ChannelRow: View {
                         Text("· \(blocks) blocks")
                     }
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.arenaSmall)
+                .foregroundStyle(.arenaSecondary)
             }
             Spacer()
             if isValidating {
                 ProgressView()
             } else if isSelected {
                 Image(systemName: "checkmark")
-                    .foregroundStyle(.tint)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.arenaInk)
                     .accessibilityLabel("Selected")
             }
         }
+        .padding(.vertical, 6)
         .contentShape(Rectangle())
     }
 }

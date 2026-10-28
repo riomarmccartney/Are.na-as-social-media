@@ -26,19 +26,24 @@ struct ToastView: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: toast.kind == .success ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                .foregroundStyle(toast.kind == .success ? Color.green : Color.orange)
+            Image(systemName: toast.kind == .success ? "checkmark" : "exclamationmark.triangle")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(toast.kind == .success ? Color.arenaOpen : Color.arenaPrivate)
             Text(toast.message)
-                .font(.subheadline)
+                .font(.arenaSmallBold)
+                .foregroundStyle(.arenaInk)
                 .lineLimit(2)
             if let actionTitle = toast.actionTitle {
                 Button(actionTitle, action: action)
-                    .font(.subheadline.weight(.semibold))
+                    .buttonStyle(.arena)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .glassEffect(.regular, in: .capsule)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .frame(minHeight: 44)
+        .background(.arenaBackground, in: RoundedRectangle(cornerRadius: 3))
+        .overlay { RoundedRectangle(cornerRadius: 3).strokeBorder(.arenaHairline) }
+        .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
         .padding(.horizontal)
         .accessibilityElement(children: .combine)
     }

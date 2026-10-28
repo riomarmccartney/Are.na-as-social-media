@@ -15,28 +15,36 @@ struct NewChannelSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField("Channel name", text: $title)
-                        .focused($isTitleFocused)
-                        .submitLabel(.done)
-                        .onSubmit { Task { await create() } }
-                }
-                Section {
-                    Picker("Visibility", selection: $visibility) {
-                        ForEach(Channel.Visibility.allCases, id: \.self) { visibility in
-                            Text(visibility.title).tag(visibility)
-                        }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 28) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Channel name", text: $title)
+                            .font(.arenaTitle)
+                            .foregroundStyle(Optional(visibility).color)
+                            .focused($isTitleFocused)
+                            .submitLabel(.done)
+                            .onSubmit { Task { await create() } }
+                        Rectangle()
+                            .fill(.arenaHairline)
+                            .frame(height: 1)
                     }
-                } footer: {
-                    Text(visibility.explanation)
-                }
-                if let errorMessage {
-                    Section {
-                        Text(errorMessage).foregroundStyle(.red)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        ArenaOptionList(title: "Visibility", options: Channel.Visibility.allCases, selection: $visibility) { $0.title }
+                        Text(visibility.explanation)
+                            .font(.arenaSmall)
+                            .foregroundStyle(.arenaSecondary)
+                    }
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.arenaSmall)
+                            .foregroundStyle(.arenaPrivate)
                     }
                 }
+                .padding(16)
             }
+            .background(.arenaBackground)
             .navigationTitle("New channel")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

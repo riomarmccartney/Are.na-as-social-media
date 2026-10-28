@@ -16,17 +16,16 @@ struct AttachmentPreview: View {
                 Button(action: onRemove) {
                     Image(systemName: "xmark")
                         .font(.caption.weight(.bold))
-                        .padding(8)
+                        .frame(width: 32, height: 32)
                 }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
+                .buttonStyle(.arena)
                 .padding(8)
                 .accessibilityLabel("Remove attachment")
             }
 
             Label(attachment.filename, systemImage: symbol)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.arenaSmall)
+                .foregroundStyle(.arenaSecondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .accessibilityLabel("Title: \(attachment.filename)")
@@ -46,36 +45,38 @@ struct AttachmentPreview: View {
                     .resizable()
                     .scaledToFit()
                     .frame(maxHeight: 380)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
                     .overlay(alignment: .bottomLeading) {
                         if attachment.kind == .video {
                             videoBadge.padding(10)
                         }
                     }
             } else {
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(.quaternary)
+                Rectangle()
+                    .fill(.arenaFill)
                     .frame(height: 220)
-                    .overlay { Image(systemName: symbol).font(.largeTitle).foregroundStyle(.secondary) }
+                    .overlay { Image(systemName: symbol).font(.largeTitle.weight(.light)).foregroundStyle(.arenaTertiary) }
             }
         case .file:
             HStack(spacing: 12) {
                 Image(systemName: "doc")
-                    .font(.title2)
+                    .font(.title2.weight(.light))
+                    .foregroundStyle(.arenaSecondary)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(attachment.filename)
+                        .font(.arenaBody)
+                        .foregroundStyle(.arenaInk)
                         .lineLimit(1)
                     if let size = attachment.fileSize {
                         Text(Int64(size).formatted(.byteCount(style: .file)))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.arenaSmall)
+                            .foregroundStyle(.arenaSecondary)
                     }
                 }
                 Spacer(minLength: 44)
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.quaternary, in: RoundedRectangle(cornerRadius: 14))
+            .arenaFrame()
         }
     }
 
@@ -86,11 +87,11 @@ struct AttachmentPreview: View {
                 Text(Duration.seconds(duration).formatted(.time(pattern: .minuteSecond)))
             }
         }
-        .font(.caption.weight(.semibold))
+        .font(.arenaSmallBold)
         .foregroundStyle(.white)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(.black.opacity(0.55), in: Capsule())
+        .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 3))
     }
 
     private var symbol: String {

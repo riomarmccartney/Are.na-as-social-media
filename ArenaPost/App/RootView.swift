@@ -20,6 +20,8 @@ struct RootView: View {
                 ComposerView()
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.arenaBackground)
         .animation(.default, value: app.phase)
         .task {
             await app.bootstrap()

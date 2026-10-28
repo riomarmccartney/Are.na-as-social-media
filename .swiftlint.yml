@@ -1,5 +1,6 @@
 included:
   - ArenaPost
+  - ArenaPostWidget
   - Packages/ArenaKit/Sources
   - Packages/ArenaKit/Tests
 excluded:

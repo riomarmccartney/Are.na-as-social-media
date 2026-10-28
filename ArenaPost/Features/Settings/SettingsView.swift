@@ -6,56 +6,105 @@ struct SettingsView: View {
 
     @AppStorage(PreferenceKey.stripLocation) private var stripLocation = true
     @AppStorage(PreferenceKey.videoQuality) private var videoQuality = VideoQuality.high
+    @AppStorage(PreferenceKey.commentNotifications) private var commentNotifications = true
     @State private var confirmingSignOut = false
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Account") {
-                    HStack(spacing: 12) {
-                        AvatarView(user: app.me, size: 44)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(app.me?.name ?? "Signed in")
-                                .font(.headline)
-                            if let slug = app.me?.slug {
-                                Text("@\(slug)")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 36) {
+                    ArenaSection("Account") {
+                        HStack(spacing: 12) {
+                            AvatarView(user: app.me, size: 44)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(app.me?.name ?? "Signed in")
+                                    .font(.arenaBodyBold)
+                                    .foregroundStyle(.arenaInk)
+                                if let slug = app.me?.slug {
+                                    Text("@\(slug)")
+                                        .font(.arenaSmall)
+                                        .foregroundStyle(.arenaSecondary)
+                                }
+                            }
+                            Spacer()
+                            Button("Sign out") {
+                                confirmingSignOut = true
+                            }
+                            .buttonStyle(.arena)
+                        }
+                    }
+
+                    ArenaSection("Posting to") {
+                        NavigationLink {
+                            ChannelPickerView()
+                        } label: {
+                            HStack {
+                                Text(app.channel?.title ?? "No channel")
+                                    .font(.arenaBodyBold)
+                                    .foregroundStyle(app.channel?.visibility.color ?? .arenaInk)
+                                    .lineLimit(1)
+                                Spacer()
+                                Text("Change")
+                                    .font(.arenaSmallBold)
+                                    .foregroundStyle(.arenaSecondary)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.arenaTertiary)
+                            }
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    ArenaSection("Photos and videos") {
+                        Toggle(isOn: $stripLocation) {
+                            Text("Remove location")
+                                .font(.arenaBody)
+                                .foregroundStyle(.arenaInk)
+                        }
+                        Text("An attached file's name becomes the block title, and your text becomes its description.")
+                            .font(.arenaSmall)
+                            .foregroundStyle(.arenaSecondary)
+                    }
+
+                    ArenaSection("Notifications") {
+                        Toggle(isOn: $commentNotifications) {
+                            Text("New comments on your posts")
+                                .font(.arenaBody)
+                                .foregroundStyle(.arenaInk)
+                        }
+                        .onChange(of: commentNotifications) { _, isOn in
+                            if isOn {
+                                Task { await CommentNotifier.requestAuthorization() }
                             }
                         }
+                        Text(
+                            "Are.na doesn't send notifications, so the app checks for comments in the background. "
+                                + "iOS decides how often, usually within an hour or so."
+                        )
+                        .font(.arenaSmall)
+                        .foregroundStyle(.arenaSecondary)
                     }
-                    Button("Sign out", role: .destructive) {
-                        confirmingSignOut = true
-                    }
-                }
 
-                Section("Channel") {
-                    NavigationLink {
-                        ChannelPickerView()
-                    } label: {
-                        LabeledContent("Posting to", value: app.channel?.title ?? "None")
-                    }
-                }
+                    ArenaOptionList(title: "Video quality", options: VideoQuality.allCases, selection: $videoQuality) { $0.title }
 
-                Section {
-                    Toggle("Remove location from photos and videos", isOn: $stripLocation)
-                    Picker("Video quality", selection: $videoQuality) {
-                        ForEach(VideoQuality.allCases) { quality in
-                            Text(quality.title).tag(quality)
+                    ArenaSection("About") {
+                        AboutRow(label: "Version") {
+                            Text(AppConfig.version)
+                                .foregroundStyle(.arenaSecondary)
+                        }
+                        Link(destination: URL(string: "https://www.are.na")!) {
+                            AboutRow(label: "Open Are.na") { linkArrow }
+                        }
+                        Link(destination: AppConfig.repositoryURL) {
+                            AboutRow(label: "Source code") { linkArrow }
                         }
                     }
-                } header: {
-                    Text("Posting")
-                } footer: {
-                    Text("An attached file's name becomes the block title, and your text becomes its description.")
                 }
-
-                Section("About") {
-                    LabeledContent("Version", value: AppConfig.version)
-                    Link("Open Are.na", destination: URL(string: "https://www.are.na")!)
-                    Link("Source code", destination: AppConfig.repositoryURL)
-                }
+                .padding(16)
             }
+            .background(.arenaBackground)
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -70,5 +119,28 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    private var linkArrow: some View {
+        Image(systemName: "arrow.up.right")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.arenaTertiary)
+    }
+}
+
+private struct AboutRow<Trailing: View>: View {
+    let label: String
+    @ViewBuilder let trailing: Trailing
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .foregroundStyle(.arenaInk)
+            Spacer()
+            trailing
+        }
+        .font(.arenaBody)
+        .frame(minHeight: 36)
+        .contentShape(Rectangle())
     }
 }

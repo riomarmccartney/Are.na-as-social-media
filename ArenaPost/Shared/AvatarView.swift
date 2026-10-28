@@ -10,13 +10,14 @@ struct AvatarView: View {
             image.resizable().scaledToFill()
         } placeholder: {
             Text(user?.initials ?? "")
-                .font(.system(size: size * 0.4, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .font(.custom("ArialMT", size: size * 0.4))
+                .foregroundStyle(.arenaSecondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(.quaternary)
+                .background(.arenaFill)
         }
         .frame(width: size, height: size)
-        .clipShape(Circle())
+        // Are.na avatars are square.
+        .clipShape(Rectangle())
         .accessibilityHidden(true)
     }
 }

@@ -3,8 +3,9 @@ import AVFoundation
 enum PreferenceKey {
     static let stripLocation = "posting.stripLocation"
     static let videoQuality = "posting.videoQuality"
-    static let historyFilter = "history.filter"
     static let draft = "composer.draft"
+    static let historyColumns = "history.columns"
+    static let commentNotifications = "notifications.comments"
 }
 
 enum VideoQuality: String, CaseIterable, Identifiable, Sendable {

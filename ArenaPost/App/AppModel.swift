@@ -8,12 +8,15 @@ struct ChannelRef: Codable, Hashable, Sendable {
     let slug: String
     let title: String
     let ownerID: Int?
+    /// Missing on channels saved before it was stored.
+    let visibility: Channel.Visibility?
 
     init(_ channel: Channel) {
         id = channel.id
         slug = channel.slug
         title = channel.title
         ownerID = channel.owner?.type == "User" ? channel.owner?.id : nil
+        visibility = channel.visibility
     }
 }
 
@@ -32,6 +35,8 @@ final class AppModel {
     private(set) var me: User?
     private(set) var channel: ChannelRef?
     private(set) var client: ArenaClient?
+    /// A widget link waiting for the composer to act on it.
+    var composeLink: ComposeLink?
 
     private let keychain = Keychain(service: "studio.upcoming.arenapost")
     private let defaults = UserDefaults.standard
@@ -94,6 +99,14 @@ final class AppModel {
         if client != nil {
             updatePhase()
         }
+    }
+
+    /// Also runs from background refresh, where `bootstrap` may not have.
+    func checkForNewComments(notify: Bool) async {
+        guard let me, let channel else { return }
+        guard let client = client ?? keychain.read(Key.token).map({ ArenaClient(token: $0, userAgent: AppConfig.userAgent) })
+        else { return }
+        await CommentNotifier.check(client: client, me: me, channelID: channel.id, notify: notify)
     }
 
     /// Signs out when Are.na says the token is no longer valid.

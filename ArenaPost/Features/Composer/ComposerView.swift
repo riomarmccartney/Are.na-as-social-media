@@ -31,6 +31,7 @@ struct ComposerView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollDismissesKeyboard(.interactively)
+            .background(.arenaBackground)
             .safeAreaInset(edge: .bottom) { composerBar }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar }
@@ -82,6 +83,16 @@ struct ComposerView: View {
             if !isShowing { isEditorFocused = true }
         }
         .onAppear { isEditorFocused = true }
+        .task {
+            if CommentNotifier.isEnabled {
+                await CommentNotifier.requestAuthorization()
+            }
+        }
+        .onChange(of: app.composeLink, initial: true) { _, link in
+            guard let link else { return }
+            app.composeLink = nil
+            open(link)
+        }
     }
 
     // MARK: Editor
@@ -92,20 +103,22 @@ struct ComposerView: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 Text(app.me?.name ?? "You")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.arenaSmallBold)
+                    .foregroundStyle(.arenaInk)
 
                 TextField(placeholder, text: $model.text, axis: .vertical)
                     .focused($isEditorFocused)
-                    .font(.body)
+                    .font(.arena(17))
+                    .foregroundStyle(.arenaBodyInk)
                     .disabled(model.phase != .idle)
 
                 if model.isPreparingAttachment {
                     HStack(spacing: 8) {
                         ProgressView()
                         Text("Preparing…")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.arenaSecondary)
                     }
-                    .font(.subheadline)
+                    .font(.arenaSmall)
                 } else if let attachment = model.attachment {
                     AttachmentPreview(attachment: attachment) {
                         model.removeAttachment()
@@ -157,11 +170,13 @@ struct ComposerView: View {
                     Task { @MainActor in model.insertLink(string) }
                 }
                 .labelStyle(.iconOnly)
-                .buttonBorderShape(.circle)
+                .buttonBorderShape(.roundedRectangle(radius: 3))
                 .controlSize(.small)
+                .tint(.arenaSecondary)
             }
             .disabled(!model.canAttach)
-            .font(.title3)
+            .font(.title3.weight(.light))
+            .foregroundStyle(.arenaSecondary)
 
             Spacer()
 
@@ -169,7 +184,12 @@ struct ComposerView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
-        .background(.bar)
+        .background(.arenaBackground)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(.arenaHairline)
+                .frame(height: 1)
+        }
     }
 
     private var postButton: some View {
@@ -183,13 +203,28 @@ struct ComposerView: View {
                         .accessibilityLabel("Posting")
                 } else {
                     Text("Post")
-                        .fontWeight(.semibold)
                 }
             }
-            .frame(minWidth: 52)
+            .frame(minWidth: 44)
         }
-        .buttonStyle(.glassProminent)
+        .buttonStyle(.arenaPrimary)
         .disabled(!model.canPost)
+    }
+
+    /// Comes back to the composer from wherever you were, then opens what
+    /// the widget asked for.
+    private func open(_ link: ComposeLink) {
+        showingHistory = false
+        showingSettings = false
+        showingChannelPicker = false
+        switch link {
+        case .write:
+            isEditorFocused = true
+        case .photo:
+            if model.canAttach { showingPhotoPicker = true }
+        case .camera:
+            if model.canAttach, UIImagePickerController.isSourceTypeAvailable(.camera) { showingCamera = true }
+        }
     }
 
     private func post() {
@@ -207,30 +242,29 @@ struct ComposerView: View {
             Button {
                 showingHistory = true
             } label: {
-                Label("Past posts", systemImage: "clock.arrow.circlepath")
+                Label("Past posts", systemImage: "square.grid.2x2")
             }
         }
+        .sharedBackgroundVisibility(.hidden)
         ToolbarItem(placement: .principal) {
             Button {
                 showingChannelPicker = true
             } label: {
                 HStack(spacing: 6) {
-                    Circle()
-                        .fill(.tint)
-                        .frame(width: 6, height: 6)
                     Text(app.channel?.title ?? "Choose channel")
+                        .font(.arenaBodyBold)
+                        .foregroundStyle(app.channel?.visibility.color ?? .arenaInk)
                         .lineLimit(1)
                     Image(systemName: "chevron.down")
                         .font(.caption2.weight(.bold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.arenaTertiary)
                 }
-                .font(.subheadline.weight(.medium))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
             }
-            .tint(.primary)
             .accessibilityLabel("Channel: \(app.channel?.title ?? "none"). Change channel")
         }
+        .sharedBackgroundVisibility(.hidden)
         ToolbarItem(placement: .topBarTrailing) {
             Button {
                 showingSettings = true
@@ -238,6 +272,7 @@ struct ComposerView: View {
                 Label("Settings", systemImage: "gearshape")
             }
         }
+        .sharedBackgroundVisibility(.hidden)
     }
 }
 
@@ -248,16 +283,16 @@ private struct ProgressRing: View {
     var body: some View {
         if let progress {
             ZStack {
-                Circle().stroke(.white.opacity(0.35), lineWidth: 2.5)
+                Circle().stroke(Color.arenaOnAccent.opacity(0.35), lineWidth: 2.5)
                 Circle()
                     .trim(from: 0, to: max(0.02, progress))
-                    .stroke(.white, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                    .stroke(Color.arenaOnAccent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                     .animation(.linear(duration: 0.2), value: progress)
             }
         } else {
             ProgressView()
-                .tint(.white)
+                .tint(.arenaOnAccent)
                 .controlSize(.small)
         }
     }

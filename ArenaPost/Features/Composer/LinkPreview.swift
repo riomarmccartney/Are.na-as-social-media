@@ -17,11 +17,11 @@ struct LinkPreview: View {
                     Text(url.host() ?? url.absoluteString)
                         .lineLimit(1)
                 }
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .font(.arenaSmall)
+                .foregroundStyle(.arenaSecondary)
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 14))
+                .arenaFrame()
             }
         }
         .task(id: url) {

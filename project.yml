@@ -27,6 +27,7 @@ targets:
       - path: ArenaPost
     dependencies:
       - package: ArenaKit
+      - target: ArenaPostWidget
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(ARENAPOST_BUNDLE_ID)
@@ -53,6 +54,41 @@ targets:
         NSPhotoLibraryUsageDescription: Used to read the original file name of photos and videos you attach, which becomes the block title.
         NSCameraUsageDescription: Take a photo or video to post to your Are.na channel.
         NSMicrophoneUsageDescription: Record sound with videos you post to your Are.na channel.
+        # Background refresh checks for new comments (CommentNotifier).
+        UIBackgroundModes:
+          - fetch
+        BGTaskSchedulerPermittedIdentifiers:
+          - studio.upcoming.arenapost.comments
+        # arenapost://compose links from the widgets.
+        CFBundleURLTypes:
+          - CFBundleURLName: $(PRODUCT_BUNDLE_IDENTIFIER)
+            CFBundleURLSchemes:
+              - arenapost
+  ArenaPostWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ArenaPostWidget
+      - path: ArenaPost/Shared/ArenaStar.swift
+      - path: ArenaPost/Shared/ComposeLink.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(ARENAPOST_BUNDLE_ID).widget
+        PRODUCT_NAME: ArenaPostWidget
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        DEVELOPMENT_TEAM: $(ARENAPOST_TEAM_ID)
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
+    info:
+      path: ArenaPostWidget/Info.plist
+      properties:
+        CFBundleDisplayName: ArenaPost
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
 schemes:
   ArenaPost:
     build:

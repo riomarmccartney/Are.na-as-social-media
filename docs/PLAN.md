@@ -9,11 +9,11 @@ becomes one Are.na block in the channel you picked in Settings.
 | Milestone | State |
 | --- | --- |
 | M0 Setup | Done: `project.yml` (XcodeGen), `ArenaKit` package, swift-format + SwiftLint configs, CI |
-| M1 Auth & gate | Built: OAuth + PKCE sign-in, Keychain, `/me`, sign out, debug PAT login |
+| M1 Auth & gate | Built: OAuth + PKCE sign-in, Keychain, `/me`, sign out |
 | M2 Channel | Built: list/filter, paste link, create, `can.add_to` check |
 | M3 Text & link posts | Built: composer, link preview, toast, haptic, text draft restore |
 | M4 Image & video posts | Built: Photos/camera/Files, JPEG/MP4 prep, presign → PUT → create; real-upload checks pending |
-| M5 History | Built: feed, Mine/Everyone, refresh, paging, processing refresh, remove |
+| M5 History | Built: block grid (everyone's posts), refresh, paging, processing refresh, remove |
 | M6 Polish | Not started (background video upload, retry queue, attachment drafts) |
 | M7 Optional | Not started |
 
@@ -80,10 +80,6 @@ Launch
 - App mark, one-line explanation, **"Sign in with Are.na"** button.
 - Opens `ASWebAuthenticationSession` → Are.na OAuth page → returns to the app.
 - Error state (cancelled / network / denied) shown inline under the button.
-- Debug builds only: "Use personal access token" field, so development is not
-  blocked on the OAuth app registration. Create one with the `write` scope at
-  `https://www.are.na/developers/personal-access-tokens` (it gives full access
-  to your account, so it never ships in release builds).
 
 ### 2.2 ComposerView (home)
 
@@ -121,9 +117,8 @@ Layout, top to bottom:
 
 - Vertical feed of `PostCard`s, newest first (`sort=created_at_desc`), from
   the configured channel.
-- Segmented filter: **Mine** (default) / **Everyone** — channels can have
-  collaborators. "Mine" is filtered by the server (`user_id=<me.id>` on the
-  contents request), so pages stay full and pagination is correct.
+- Shows everyone's blocks in the channel, including collaborators'; there is
+  no Mine/Everyone filter (D2).
 - Channel contents can include channels as well as blocks; items with
   `type == "Channel"` are skipped.
 - `PostCard` renders by block type:
@@ -222,7 +217,7 @@ Source of truth: the snapshot in [`docs/arena/`](arena/) —
 
 | Purpose | Endpoint | Notes |
 | --- | --- | --- |
-| Current user | `GET /v3/me` | `Me` = `User` + `email`, `counts`; id/name/slug/avatar used for the header and "Mine" |
+| Current user | `GET /v3/me` | `Me` = `User` + `email`, `counts`; id/name/slug/avatar used for the header |
 | My channels | `GET /v3/users/{id}/contents?type=Channel&sort=updated_at_desc&page=&per=` | channels you created; there is no dedicated "user channels" endpoint |
 | Channel by link | `GET /v3/channels/{id-or-slug}` | full resource incl. `can.add_to`, `owner`, `collaborators` |
 | Create channel | `POST /v3/channels` | `{ title, visibility?: public\|closed\|private (default closed), description? }` |
@@ -448,7 +443,7 @@ decoding can be checked against real JSON fixtures.
 | M2 | Channel | Picker lists/filters your channels, paste-a-link for collaborations, create one, `can.add_to` checked, selection persisted, invalid channel handled |
 | M3 | Text & link posts | Composer focused on launch; text → Text block, URL → Link block; toast; draft restore |
 | M4 | Image & video posts | PhotosPicker + camera + files; prep/export; presign → PUT → create; progress; filename → title, text → description (D1); first task: upload a real mp4 + a large file to confirm video → Attachment and find the size cap |
-| M5 | History | Paginated feed with per-type cards, Mine/Everyone filter, refresh, context menu incl. remove |
+| M5 | History | Paginated feed with per-type cards, refresh, context menu incl. remove |
 | M6 | Polish | Background video upload + resume, retry queue, haptics, empty/error states, accessibility pass, app icon |
 | M7 | Optional | Share Extension ("Post to my-feed" from Safari/Photos), App Intent / Shortcut + Action Button, Lock Screen widget that opens the composer |
 
@@ -461,8 +456,8 @@ M1–M3 together are the smallest useful app; M4 is where most of the risk is
 
 - **D1 — Text with an attachment.** ✅ Decided: composer text → block
   `description`, attached file name → block `title` (§1, §3.4).
-- **D2 — History default filter.** Recommended: "Mine", with "Everyone" one tap
-  away (matters only for collaborative channels).
+- **D2 — History filter.** ✅ Decided: no filter; history always shows
+  everyone's blocks in the channel.
 - **D3 — One channel or quick-switch favorites.** Recommended: one channel in
   v1; the channel chip can grow into a favorites switcher later.
 - **D4 — Minimum iOS.** Recommended: iOS 26.
