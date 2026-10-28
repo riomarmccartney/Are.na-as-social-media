@@ -1,5 +1,5 @@
-# Generates ArenaPost.xcodeproj: `xcodegen generate`
-name: ArenaPost
+# Generates Chirp.xcodeproj: `xcodegen generate`
+name: Chirp
 options:
   deploymentTarget:
     iOS: "26.0"
@@ -20,27 +20,27 @@ packages:
   ArenaKit:
     path: Packages/ArenaKit
 targets:
-  ArenaPost:
+  Chirp:
     type: application
     platform: iOS
     sources:
-      - path: ArenaPost
+      - path: Chirp
     dependencies:
       - package: ArenaKit
-      - target: ArenaPostWidget
+      - target: ChirpWidget
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: $(ARENAPOST_BUNDLE_ID)
-        PRODUCT_NAME: ArenaPost
+        PRODUCT_BUNDLE_IDENTIFIER: $(CHIRP_BUNDLE_ID)
+        PRODUCT_NAME: Chirp
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
-        DEVELOPMENT_TEAM: $(ARENAPOST_TEAM_ID)
+        DEVELOPMENT_TEAM: $(CHIRP_TEAM_ID)
         CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
     info:
-      path: ArenaPost/Resources/Info.plist
+      path: Chirp/Resources/Info.plist
       properties:
         CFBundleDisplayName: Chirp
         CFBundleShortVersionString: $(MARKETING_VERSION)
@@ -65,25 +65,25 @@ targets:
           - CFBundleURLName: $(PRODUCT_BUNDLE_IDENTIFIER)
             CFBundleURLSchemes:
               - arenapost
-  ArenaPostWidget:
+  ChirpWidget:
     type: app-extension
     platform: iOS
     sources:
-      - path: ArenaPostWidget
-      - path: ArenaPost/Shared/ArenaStar.swift
-      - path: ArenaPost/Shared/ComposeLink.swift
+      - path: ChirpWidget
+      - path: Chirp/Shared/ArenaStar.swift
+      - path: Chirp/Shared/ComposeLink.swift
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: $(ARENAPOST_BUNDLE_ID).widget
-        PRODUCT_NAME: ArenaPostWidget
+        PRODUCT_BUNDLE_IDENTIFIER: $(CHIRP_BUNDLE_ID).widget
+        PRODUCT_NAME: ChirpWidget
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
-        DEVELOPMENT_TEAM: $(ARENAPOST_TEAM_ID)
+        DEVELOPMENT_TEAM: $(CHIRP_TEAM_ID)
         CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "1"
         SKIP_INSTALL: YES
     info:
-      path: ArenaPostWidget/Info.plist
+      path: ChirpWidget/Info.plist
       properties:
         CFBundleDisplayName: Chirp
         CFBundleShortVersionString: $(MARKETING_VERSION)
@@ -91,10 +91,10 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
 schemes:
-  ArenaPost:
+  Chirp:
     build:
       targets:
-        ArenaPost: all
+        Chirp: all
     run:
       config: Debug
     archive:

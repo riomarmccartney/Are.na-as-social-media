@@ -2,7 +2,7 @@ import SwiftUI
 import WidgetKit
 
 @main
-struct ArenaPostWidgets: WidgetBundle {
+struct ChirpWidgets: WidgetBundle {
     var body: some Widget {
         NewPostWidget()
     }

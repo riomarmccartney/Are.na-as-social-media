@@ -9,7 +9,7 @@ import Testing
 
 @Suite struct ArenaClientTests {
     private func client(_ transport: StubTransport) -> ArenaClient {
-        ArenaClient(token: "secret", userAgent: "ArenaPost/1.0 (+test)", transport: transport)
+        ArenaClient(token: "secret", userAgent: "Chirp/1.0 (+test)", transport: transport)
     }
 
     @Test func sendsAuthAndUserAgent() async throws {
@@ -20,7 +20,7 @@ import Testing
         #expect(request.url?.absoluteString == "https://api.are.na/v3/me")
         #expect(request.httpMethod == "GET")
         #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer secret")
-        #expect(request.value(forHTTPHeaderField: "User-Agent") == "ArenaPost/1.0 (+test)")
+        #expect(request.value(forHTTPHeaderField: "User-Agent") == "Chirp/1.0 (+test)")
         #expect(request.cachePolicy == .reloadIgnoringLocalCacheData)
     }
 

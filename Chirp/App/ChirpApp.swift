@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct ArenaPostApp: App {
+struct ChirpApp: App {
     @State private var app = AppModel()
     @Environment(\.scenePhase) private var scenePhase
 

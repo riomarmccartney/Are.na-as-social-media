@@ -1,7 +1,7 @@
 // Draws the app icon: one six-pointed star, after one half of the Are.na mark.
-// Keep the geometry in sync with ArenaPost/Shared/ArenaStar.swift.
+// Keep the geometry in sync with Chirp/Shared/ArenaStar.swift.
 //
-//   xcrun swift scripts/make-app-icon.swift ArenaPost/Resources/Assets.xcassets/AppIcon.appiconset
+//   xcrun swift scripts/make-app-icon.swift Chirp/Resources/Assets.xcassets/AppIcon.appiconset
 
 import CoreGraphics
 import Foundation

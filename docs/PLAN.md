@@ -17,7 +17,7 @@ becomes one Are.na block in the channel you picked in Settings.
 | M6 Polish | Not started (background video upload, retry queue, attachment drafts) |
 | M7 Optional | Not started |
 
-Decided defaults: iOS 26, app name **ArenaPost**, bundle id
+Decided defaults: iOS 26, app name **Chirp**, bundle id
 `studio.upcoming.arenapost`, URL scheme `arenapost://` (D4, D5). v1
 simplifications: History opens non-video files in the browser (not Quick
 Look) and shows a plain placeholder instead of blurhash; HTTP revalidation
@@ -209,7 +209,7 @@ Source of truth: the snapshot in [`docs/arena/`](arena/) —
    Extension can use it). There is **no `expires_in` and no refresh token**,
    so there is no refresh logic to build.
 7. All requests: `Authorization: Bearer <token>` and
-   `User-Agent: ArenaPost/<version> (+<contact URL or email>)` (Are.na asks
+   `User-Agent: Chirp/<version> (+<contact URL or email>)` (Are.na asks
    clients to identify themselves). A 401 means the token was revoked → clear
    the Keychain and go back to LoginView.
 
@@ -361,9 +361,9 @@ Rules:
 ### 4.2 Project layout
 
 ```text
-ArenaPost/                         Xcode app target (synchronized folders)
+Chirp/                         Xcode app target (synchronized folders)
   App/
-    ArenaPostApp.swift
+    ChirpApp.swift
     RootView.swift                 session-state switch (§2)
     AppModel.swift                 @Observable: session, me, selectedChannel
   Features/
@@ -416,7 +416,7 @@ decoding can be checked against real JSON fixtures.
 ## 5. Quality & tooling
 
 - **SwiftLint** (strict, CI-enforced) + **swift-format** (format on commit).
-- **Type checking / build**: `xcodebuild -scheme ArenaPost -destination
+- **Type checking / build**: `xcodebuild -scheme Chirp -destination
   'platform=iOS Simulator,name=iPhone 17' build test`.
 - **Tests**: `swift test` in `Packages/ArenaKit`; a few XCUITests for the gate
   (signed out → login shown; signed in without channel → picker shown).
@@ -461,5 +461,5 @@ M1–M3 together are the smallest useful app; M4 is where most of the risk is
 - **D3 — One channel or quick-switch favorites.** Recommended: one channel in
   v1; the channel chip can grow into a favorites switcher later.
 - **D4 — Minimum iOS.** Recommended: iOS 26.
-- **D5 — App name, bundle id, URL scheme** (e.g. `ArenaPost`,
+- **D5 — App name, bundle id, URL scheme** (e.g. `Chirp`,
   `studio.upcoming.arenapost`, `arenapost://`).

@@ -1,8 +1,10 @@
 # Are.na-as-social-media
 
 **Chirp** — an iOS app that opens straight into a Threads-style composer and
-posts each entry as a block to one Are.na channel. (The Xcode project, targets
-and bundle ID are still named ArenaPost.)
+posts each entry as a block to one Are.na channel. It was first called
+ArenaPost, which is why the bundle ID, `arenapost://` URL scheme and Keychain
+service still use that name; changing them would reinstall the app and break
+the registered OAuth redirect.
 
 - Text → Text block, a lone URL → Link block, a photo/video/file → Image or
   Attachment block (file name = block title, your text = description).
@@ -37,15 +39,15 @@ See [docs/PLAN.md](docs/PLAN.md) for the product and technical plan, and
 
    ```sh
    xcodegen generate
-   open ArenaPost.xcodeproj
+   open Chirp.xcodeproj
    ```
 
-4. Run the `ArenaPost` scheme on a device or simulator.
+4. Run the `Chirp` scheme on a device or simulator.
 
 ## Project layout
 
 ```text
-ArenaPost/                 SwiftUI app
+Chirp/                 SwiftUI app
   App/                     entry point, session gate (RootView), AppModel
   Features/Auth/           Sign in with Are.na
   Features/Composer/       home screen, media preparation, camera/photos/files
@@ -53,7 +55,7 @@ ArenaPost/                 SwiftUI app
   Features/Settings/       settings, channel picker, new channel
   Features/Notifications/  background check for new comments
   Shared/                  Keychain, preferences, small views
-ArenaPostWidget/           "New post" widgets (deep links into the composer)
+ChirpWidget/           "New post" widgets (deep links into the composer)
 Packages/ArenaKit/         Are.na v3 client, OAuth/PKCE, posting pipeline (+ tests)
 Config/                    xcconfig files (Local.xcconfig is git-ignored)
 docs/                      plan + Are.na API snapshot
@@ -65,9 +67,9 @@ scripts/                   fetch-arena-docs.sh, make-app-icon.swift
 ```sh
 swift test --package-path Packages/ArenaKit       # unit tests (macOS or Linux)
 swift format lint --recursive --strict --configuration .swift-format \
-  ArenaPost ArenaPostWidget Packages/ArenaKit/Sources Packages/ArenaKit/Tests
+  Chirp ChirpWidget Packages/ArenaKit/Sources Packages/ArenaKit/Tests
 swiftlint lint --strict
-xcodebuild build -project ArenaPost.xcodeproj -scheme ArenaPost \
+xcodebuild build -project Chirp.xcodeproj -scheme Chirp \
   -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO
 ```
 

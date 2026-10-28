@@ -1,6 +1,6 @@
 included:
-  - ArenaPost
-  - ArenaPostWidget
+  - Chirp
+  - ChirpWidget
   - Packages/ArenaKit/Sources
   - Packages/ArenaKit/Tests
 excluded:
