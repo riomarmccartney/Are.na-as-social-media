@@ -25,7 +25,7 @@ struct HistoryView: View {
                 } else {
                     LazyVGrid(columns: columns, spacing: columnCount == 1 ? 32 : 24) {
                         ForEach(model.blocks) { block in
-                            BlockTile(block: block, onOpen: { openBlock = block }) { menu(for: block) }
+                            BlockTile(block: block, onOpen: { openBlock = block }, menu: { menu(for: block) })
                                 .onAppear {
                                     Task { await loadMore(after: block) }
                                 }
