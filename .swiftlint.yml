@@ -1,0 +1,34 @@
+included:
+  - Chirp
+  - ChirpWidget
+  - Packages/ArenaKit/Sources
+  - Packages/ArenaKit/Tests
+excluded:
+  - Packages/ArenaKit/.build
+
+# swift-format owns layout; SwiftLint checks the rest.
+disabled_rules:
+  - trailing_comma
+  - opening_brace
+  - line_length
+  - identifier_name
+  - type_body_length
+  - function_body_length
+  - file_length
+  - cyclomatic_complexity
+  - statement_position
+
+opt_in_rules:
+  - empty_count
+  - first_where
+  - contains_over_first_not_nil
+  - implicitly_unwrapped_optional
+  - redundant_nil_coalescing
+  - toggle_bool
+  - private_swiftui_state
+
+nesting:
+  type_level: 3
+
+function_parameter_count:
+  warning: 6

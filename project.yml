@@ -1,0 +1,101 @@
+# Generates Chirp.xcodeproj: `xcodegen generate`
+name: Chirp
+options:
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+configs:
+  Debug: debug
+  Release: release
+configFiles:
+  Debug: Config/Debug.xcconfig
+  Release: Config/Release.xcconfig
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+packages:
+  ArenaKit:
+    path: Packages/ArenaKit
+targets:
+  Chirp:
+    type: application
+    platform: iOS
+    sources:
+      - path: Chirp
+    dependencies:
+      - package: ArenaKit
+      - target: ChirpWidget
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(CHIRP_BUNDLE_ID)
+        PRODUCT_NAME: Chirp
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        DEVELOPMENT_TEAM: $(CHIRP_TEAM_ID)
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    info:
+      path: Chirp/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Chirp
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ArenaClientID: $(ARENA_CLIENT_ID)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        NSPhotoLibraryAddUsageDescription: Save story images of your posts to share on Instagram.
+        NSPhotoLibraryUsageDescription: Used to read the original file name of photos and videos you attach, which becomes the block title.
+        NSCameraUsageDescription: Take a photo or video to post to your Are.na channel.
+        NSMicrophoneUsageDescription: Record sound with videos you post to your Are.na channel.
+        # Background refresh checks for new comments (CommentNotifier).
+        UIBackgroundModes:
+          - fetch
+        BGTaskSchedulerPermittedIdentifiers:
+          - studio.upcoming.arenapost.comments
+        # arenapost://compose links from the widgets.
+        CFBundleURLTypes:
+          - CFBundleURLName: $(PRODUCT_BUNDLE_IDENTIFIER)
+            CFBundleURLSchemes:
+              - arenapost
+  ChirpWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ChirpWidget
+      - path: Chirp/Shared/ArenaStar.swift
+      - path: Chirp/Shared/ComposeLink.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(CHIRP_BUNDLE_ID).widget
+        PRODUCT_NAME: ChirpWidget
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        DEVELOPMENT_TEAM: $(CHIRP_TEAM_ID)
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
+    info:
+      path: ChirpWidget/Info.plist
+      properties:
+        CFBundleDisplayName: Chirp
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+schemes:
+  Chirp:
+    build:
+      targets:
+        Chirp: all
+    run:
+      config: Debug
+    archive:
+      config: Release
