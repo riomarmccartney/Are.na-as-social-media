@@ -21,6 +21,7 @@ import Testing
         #expect(request.httpMethod == "GET")
         #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer secret")
         #expect(request.value(forHTTPHeaderField: "User-Agent") == "ArenaPost/1.0 (+test)")
+        #expect(request.cachePolicy == .reloadIgnoringLocalCacheData)
     }
 
     @Test func listsUserChannels() async throws {

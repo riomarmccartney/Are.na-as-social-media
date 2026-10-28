@@ -338,7 +338,9 @@ struct Endpoint {
         }
         guard let url = components.url else { throw ArenaError.invalidResponse }
 
-        var request = URLRequest(url: url)
+        // Are.na sends `Cache-Control: max-age=300`, so without this a refresh
+        // within five minutes would get the stored copy back.
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
         request.httpMethod = method.rawValue
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
