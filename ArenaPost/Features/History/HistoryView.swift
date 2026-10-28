@@ -13,6 +13,8 @@ struct HistoryView: View {
     @State private var removeError: String?
     @State private var openBlock: Block?
     @State private var editingBlock: Block?
+    @State private var toast: Toast?
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         ScrollView {
@@ -50,6 +52,10 @@ struct HistoryView: View {
                 }
             }
             .sharedBackgroundVisibility(.hidden)
+        }
+        .toast($toast) { toast in
+            if let link = toast.link { openURL(link) }
+            self.toast = nil
         }
         .refreshable { await reload() }
         .task {
@@ -136,6 +142,13 @@ struct HistoryView: View {
         Link(destination: block.webURL) {
             Label("Open in Are.na", systemImage: "safari")
         }
+        if !block.isProcessing {
+            Button {
+                Task { await saveStory(block) }
+            } label: {
+                Label("Save as story", systemImage: "rectangle.portrait")
+            }
+        }
         if canRemove(block) {
             Button(role: .destructive) {
                 blockToRemove = block
@@ -185,6 +198,20 @@ struct HistoryView: View {
     private func loadMore(after block: Block) async {
         guard let client = app.client, let channel = app.channel else { return }
         await model.loadMoreIfNeeded(after: block, client: client, channelID: channel.id)
+    }
+
+    /// Saves a 9:16 image of the block for Instagram stories.
+    private func saveStory(_ block: Block) async {
+        guard let story = await StoryBlock.from(block) else {
+            toast = .failure("Couldn't make a story image of this block.")
+            return
+        }
+        do {
+            try await StoryExporter.save(StoryCard(block: story))
+            toast = .success("Story image saved to Photos", action: "Instagram", link: StoryExporter.instagramURL)
+        } catch {
+            toast = .failure(error.localizedDescription)
+        }
     }
 
     private func save(_ changes: BlockUpdate, to block: Block) async throws -> Block {

@@ -51,6 +51,7 @@ targets:
           - UIInterfaceOrientationPortrait
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
+        NSPhotoLibraryAddUsageDescription: Save story images of your posts to share on Instagram.
         NSPhotoLibraryUsageDescription: Used to read the original file name of photos and videos you attach, which becomes the block title.
         NSCameraUsageDescription: Take a photo or video to post to your Are.na channel.
         NSMicrophoneUsageDescription: Record sound with videos you post to your Are.na channel.

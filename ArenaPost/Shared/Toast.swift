@@ -10,9 +10,11 @@ struct Toast: Identifiable, Equatable {
     let kind: Kind
     let message: String
     var actionTitle: String?
+    /// When set, the action opens this instead of the screen's own action.
+    var link: URL?
 
-    static func success(_ message: String, action: String? = nil) -> Toast {
-        Toast(kind: .success, message: message, actionTitle: action)
+    static func success(_ message: String, action: String? = nil, link: URL? = nil) -> Toast {
+        Toast(kind: .success, message: message, actionTitle: action, link: link)
     }
 
     static func failure(_ message: String, action: String? = nil) -> Toast {

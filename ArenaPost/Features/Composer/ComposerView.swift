@@ -21,6 +21,8 @@ struct ComposerView: View {
 
     @AppStorage(PreferenceKey.stripLocation) private var stripLocation = true
     @AppStorage(PreferenceKey.videoQuality) private var videoQuality = VideoQuality.high
+    @AppStorage(PreferenceKey.storyOnPost) private var saveStory = false
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         NavigationStack {
@@ -68,7 +70,9 @@ struct ComposerView: View {
             .ignoresSafeArea()
         }
         .toast($model.toast) { toast in
-            if toast.kind == .success {
+            if let link = toast.link {
+                openURL(link)
+            } else if toast.kind == .success {
                 showingHistory = true
             } else {
                 post()
@@ -180,6 +184,8 @@ struct ComposerView: View {
 
             Spacer()
 
+            storyToggle
+
             postButton
         }
         .padding(.horizontal, 20)
@@ -227,11 +233,27 @@ struct ComposerView: View {
         }
     }
 
+    /// Also save the post as an Instagram story image.
+    private var storyToggle: some View {
+        Toggle(isOn: $saveStory) {
+            Label("Story", systemImage: "rectangle.portrait")
+        }
+        .toggleStyle(StoryToggleStyle())
+        .disabled(model.phase != .idle)
+        .accessibilityLabel("Also save as story image")
+    }
+
     private func post() {
         guard let client = app.client, let channel = app.channel else { return }
-        model.post(client: client, channel: channel) {
+        let story = saveStory ? storyCard() : nil
+        model.post(client: client, channel: channel, story: story) {
             app.signOut()
         }
+    }
+
+    /// Built before posting, while the attachment's preview still exists.
+    private func storyCard() -> StoryCard? {
+        StoryBlock(kind: model.kind, attachment: model.attachment).map(StoryCard.init(block:))
     }
 
     // MARK: Toolbar
@@ -295,5 +317,25 @@ private struct ProgressRing: View {
                 .tint(.arenaOnAccent)
                 .controlSize(.small)
         }
+    }
+}
+
+/// A small Are.na button that fills in when on.
+private struct StoryToggleStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Button {
+            configuration.isOn.toggle()
+        } label: {
+            configuration.label
+                .labelStyle(.titleAndIcon)
+                .font(.arenaSmallBold)
+                .foregroundStyle(configuration.isOn ? Color.arenaBackground : Color.arenaSecondary)
+                .padding(.horizontal, 10)
+                .frame(minHeight: 34)
+                .background(configuration.isOn ? Color.arenaInk : Color.arenaFill, in: RoundedRectangle(cornerRadius: 3))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(configuration.isOn ? "On" : "Off")
     }
 }

@@ -6,6 +6,7 @@ enum PreferenceKey {
     static let draft = "composer.draft"
     static let historyColumns = "history.columns"
     static let commentNotifications = "notifications.comments"
+    static let storyOnPost = "composer.storyOnPost"
 }
 
 enum VideoQuality: String, CaseIterable, Identifiable, Sendable {

@@ -120,7 +120,14 @@ final class ComposerModel {
 
     // MARK: Posting
 
-    func post(client: ArenaClient, channel: ChannelRef, onUnauthorized: @escaping @MainActor () -> Void) {
+    /// With `story`, also saves a story image of the post to Photos once
+    /// it's posted.
+    func post(
+        client: ArenaClient,
+        channel: ChannelRef,
+        story: StoryCard? = nil,
+        onUnauthorized: @escaping @MainActor () -> Void
+    ) {
         guard canPost else { return }
         phase = .posting(progress: nil)
         let text = text
@@ -132,6 +139,9 @@ final class ComposerModel {
                     Task { @MainActor in self.apply(progress) }
                 }
                 finishPost(channel: channel)
+                if let story {
+                    await saveStory(story, channel: channel)
+                }
             } catch is CancellationError {
                 phase = .idle
             } catch {
@@ -163,5 +173,14 @@ final class ComposerModel {
         phase = .idle
         postCount += 1
         toast = .success("Posted to \(channel.title)", action: "View")
+    }
+
+    private func saveStory(_ story: StoryCard, channel: ChannelRef) async {
+        do {
+            try await StoryExporter.save(story)
+            toast = .success("Posted. Story image saved to Photos", action: "Instagram", link: StoryExporter.instagramURL)
+        } catch {
+            toast = .failure("Posted to \(channel.title). Story image not saved: \(error.localizedDescription)")
+        }
     }
 }
