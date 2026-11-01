@@ -23,6 +23,10 @@ struct ChannelPickerView: View {
     @State private var validatingID: Int?
     /// The channel picked from the list but not yet confirmed with ✓.
     @State private var pendingChannel: Channel?
+    /// The channel in use, loaded on its own so it can head the list even
+    /// when it isn't one of yours (a collaboration added by link) or sits on
+    /// a page not loaded yet.
+    @State private var currentChannel: Channel?
     @State private var errorMessage: String?
 
     var body: some View {
@@ -51,7 +55,8 @@ struct ChannelPickerView: View {
             .listRowBackground(Color.arenaBackground)
 
             Section {
-                ForEach(filteredChannels) { channel in
+                let channels = listedChannels
+                ForEach(channels) { channel in
                     Button {
                         Task { await choose(channel) }
                     } label: {
@@ -63,7 +68,7 @@ struct ChannelPickerView: View {
                     }
                     .buttonStyle(.plain)
                     .onAppear {
-                        if channel.id == model.channels.last?.id {
+                        if channel.id == channels.last?.id {
                             Task { await loadMore() }
                         }
                     }
@@ -152,16 +157,37 @@ struct ChannelPickerView: View {
         return pendingChannel.id != app.channel?.id
     }
 
-    private var filteredChannels: [Channel] {
+    /// The channel in use first, then yours in Are.na's order, filtered.
+    /// Ordered by the channel in use rather than the staged one, so rows
+    /// don't jump around while you pick.
+    private var listedChannels: [Channel] {
+        var channels = model.channels
+        if let currentID = app.channel?.id {
+            let loaded = currentChannel?.id == currentID ? currentChannel : nil
+            if let current = channels.first(where: { $0.id == currentID }) ?? loaded {
+                channels.removeAll { $0.id == currentID }
+                channels.insert(current, at: 0)
+            }
+        }
         let query = filter.trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty else { return model.channels }
-        return model.channels.filter { $0.title.localizedStandardContains(query) }
+        guard !query.isEmpty else { return channels }
+        return channels.filter { $0.title.localizedStandardContains(query) }
     }
 
     private func reload() async {
         guard let client = app.client, let me = app.me else { return }
+        // Fetched alongside the list. Best effort: if it fails, the channel
+        // in use still heads the list once its page has loaded.
+        let currentID = app.channel?.id
+        async let current = Self.channel(currentID, client: client)
         await model.reload(client: client, userID: me.id)
+        currentChannel = await current
         if let error = model.lastError { app.handle(error) }
+    }
+
+    private nonisolated static func channel(_ id: Int?, client: ArenaClient) async -> Channel? {
+        guard let id else { return nil }
+        return try? await client.channel(String(id))
     }
 
     private func loadMore() async {
