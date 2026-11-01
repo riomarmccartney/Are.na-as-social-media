@@ -1,0 +1,3 @@
+# Keep in sync with CHIRP_BUNDLE_ID in Config/Shared.xcconfig.
+app_identifier("studio.upcoming.arenapost")
+team_id(ENV["CHIRP_TEAM_ID"]) if ENV["CHIRP_TEAM_ID"]

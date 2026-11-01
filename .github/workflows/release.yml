@@ -1,0 +1,50 @@
+name: Release to App Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      submit_for_review:
+        description: Submit the build for App Review after upload
+        type: boolean
+        default: false
+
+concurrency:
+  group: app-store-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      CHIRP_TEAM_ID: ${{ vars.CHIRP_TEAM_ID }}
+      MATCH_GIT_URL: ${{ vars.MATCH_GIT_URL }}
+      SUBMIT_FOR_REVIEW: ${{ inputs.submit_for_review }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Write Config/Local.xcconfig
+        env:
+          ARENA_CLIENT_ID: ${{ vars.ARENA_CLIENT_ID }}
+        run: |
+          printf 'CHIRP_TEAM_ID = %s\nARENA_CLIENT_ID = %s\n' \
+            "$CHIRP_TEAM_ID" "$ARENA_CLIENT_ID" > Config/Local.xcconfig
+
+      - name: Generate project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      # Runs `bundle exec fastlane ios release` (fastlane/Fastfile).
+      # ios_package_name and shared_module are required by the action but
+      # only used by Kotlin Multiplatform projects.
+      - name: Publish to App Store
+        uses: openMF/mifos-x-actionhub-publish-ios-on-appstore@v1.0.15
+        with:
+          ios_package_name: Chirp
+          shared_module: .
+          appstore_key_id: ${{ secrets.APPSTORE_KEY_ID }}
+          appstore_issuer_id: ${{ secrets.APPSTORE_ISSUER_ID }}
+          appstore_auth_key: ${{ secrets.APPSTORE_AUTH_KEY }}
+          match_password: ${{ secrets.MATCH_PASSWORD }}
+          match_git_private_key: ${{ secrets.MATCH_GIT_PRIVATE_KEY }}

@@ -1,0 +1,85 @@
+# Run by openMF/mifos-x-actionhub-publish-ios-on-appstore (`bundle exec fastlane ios release`)
+# from .github/workflows/release.yml. That action writes:
+#   secrets/AuthKey.p8            App Store Connect API key (decoded from base64)
+# and exports APPSTORE_KEY_ID, APPSTORE_ISSUER_ID, MATCH_PASSWORD and
+# MATCH_GIT_PRIVATE_KEY. MATCH_GIT_URL, CHIRP_TEAM_ID and SUBMIT_FOR_REVIEW come
+# from the workflow's job env. See docs/RELEASE.md for the one-time setup.
+
+default_platform(:ios)
+skip_docs
+
+APP_ID = "studio.upcoming.arenapost"
+WIDGET_ID = "#{APP_ID}.widget"
+PROJECT = "Chirp.xcodeproj"
+
+platform :ios do
+  desc "Build a signed IPA and upload it to App Store Connect"
+  lane :release do
+    root = sh("git rev-parse --show-toplevel", log: false).strip
+    team_id = ENV.fetch("CHIRP_TEAM_ID")
+
+    # Temporary keychain so match can install the distribution certificate.
+    setup_ci
+
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch("APPSTORE_KEY_ID"),
+      issuer_id: ENV.fetch("APPSTORE_ISSUER_ID"),
+      key_filepath: File.join(root, "secrets", "AuthKey.p8")
+    )
+
+    # Reads MATCH_GIT_URL, MATCH_PASSWORD and MATCH_GIT_PRIVATE_KEY from env.
+    match(
+      type: "appstore",
+      app_identifier: [APP_ID, WIDGET_ID],
+      team_id: team_id,
+      readonly: true,
+      api_key: api_key
+    )
+    profiles = lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING]
+
+    # project.yml uses automatic signing for local development; switch the
+    # generated project to the match profiles for this build only.
+    { "Chirp" => APP_ID, "ChirpWidget" => WIDGET_ID }.each do |target, bundle_id|
+      update_code_signing_settings(
+        path: File.join(root, PROJECT),
+        targets: [target],
+        use_automatic_signing: false,
+        team_id: team_id,
+        code_sign_identity: "Apple Distribution",
+        profile_name: profiles.fetch(bundle_id)
+      )
+    end
+
+    # One build number above the latest upload for the current version
+    # (falls back to 0 when nothing has been uploaded yet).
+    build_number = latest_testflight_build_number(
+      app_identifier: APP_ID,
+      api_key: api_key,
+      initial_build_number: 0
+    ) + 1
+
+    ipa = build_app(
+      project: File.join(root, PROJECT),
+      scheme: "Chirp",
+      configuration: "Release",
+      export_method: "app-store",
+      export_options: { provisioningProfiles: profiles },
+      # CURRENT_PROJECT_VERSION feeds CFBundleVersion of both app and widget.
+      xcargs: "CURRENT_PROJECT_VERSION=#{build_number}",
+      output_directory: File.join(root, "build"),
+      output_name: "Chirp.ipa"
+    )
+
+    upload_to_app_store(
+      api_key: api_key,
+      app_identifier: APP_ID,
+      ipa: ipa,
+      skip_metadata: true,
+      skip_screenshots: true,
+      submit_for_review: ENV["SUBMIT_FOR_REVIEW"] == "true",
+      automatic_release: false,
+      precheck_include_in_app_purchases: false,
+      force: true
+    )
+  end
+end
