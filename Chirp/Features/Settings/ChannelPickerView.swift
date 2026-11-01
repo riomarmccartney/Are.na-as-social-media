@@ -3,6 +3,11 @@ import SwiftUI
 
 /// Lists the channels you created, and lets you paste a link to one you
 /// collaborate on or create a new one.
+///
+/// Outside onboarding, tapping a channel only stages it: the ✓ in the
+/// navigation bar switches to it and the × leaves the current one in place.
+/// Pasting a link or creating a channel already ends in its own confirmation,
+/// so those switch straight away.
 struct ChannelPickerView: View {
     /// During onboarding there is no way back: a channel must be chosen.
     var isOnboarding = false
@@ -16,6 +21,8 @@ struct ChannelPickerView: View {
     @State private var showingLinkEntry = false
     @State private var linkText = ""
     @State private var validatingID: Int?
+    /// The channel picked from the list but not yet confirmed with ✓.
+    @State private var pendingChannel: Channel?
     @State private var errorMessage: String?
 
     var body: some View {
@@ -50,7 +57,7 @@ struct ChannelPickerView: View {
                     } label: {
                         ChannelRow(
                             channel: channel,
-                            isSelected: app.channel?.id == channel.id,
+                            isSelected: selectedID == channel.id,
                             isValidating: validatingID == channel.id
                         )
                     }
@@ -86,13 +93,23 @@ struct ChannelPickerView: View {
         .background(.arenaBackground)
         .searchable(text: $filter, prompt: "Filter your channels")
         .navigationTitle(isOnboarding ? "Choose a channel" : "Channel")
+        .navigationBarBackButtonHidden(!isOnboarding)
         .toolbar {
             if isOnboarding {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Sign out", role: .destructive) { app.signOut() }
                 }
+            } else {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", systemImage: "xmark", role: .cancel) { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Switch channel", systemImage: "checkmark", role: .confirm) { confirm() }
+                        .disabled(!hasChange || validatingID != nil)
+                }
             }
         }
+        .interactiveDismissDisabled(hasChange)
         .task { await reload() }
         .refreshable { await reload() }
         .disabled(validatingID != nil)
@@ -125,6 +142,16 @@ struct ChannelPickerView: View {
         }
     }
 
+    /// The checkmarked row: the staged channel, else the one in use.
+    private var selectedID: Int? {
+        pendingChannel?.id ?? app.channel?.id
+    }
+
+    private var hasChange: Bool {
+        guard let pendingChannel else { return false }
+        return pendingChannel.id != app.channel?.id
+    }
+
     private var filteredChannels: [Channel] {
         let query = filter.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return model.channels }
@@ -142,8 +169,19 @@ struct ChannelPickerView: View {
         await model.loadMore(client: client, userID: me.id)
     }
 
+    /// During onboarding this is the choice; otherwise it stages the
+    /// channel for ✓. Tapping the channel already in use un-stages.
     private func choose(_ channel: Channel) async {
-        await validateAndSelect(String(channel.id), id: channel.id)
+        if !isOnboarding, channel.id == app.channel?.id {
+            pendingChannel = nil
+            return
+        }
+        guard let checked = await validate(String(channel.id), id: channel.id) else { return }
+        if isOnboarding {
+            app.select(checked)
+        } else {
+            pendingChannel = checked
+        }
     }
 
     private func chooseLink(_ text: String) async {
@@ -151,25 +189,33 @@ struct ChannelPickerView: View {
             errorMessage = "That doesn't look like an Are.na channel link."
             return
         }
-        await validateAndSelect(slug, id: -1)
+        guard let channel = await validate(slug, id: -1) else { return }
+        app.select(channel)
+        finish()
+    }
+
+    private func confirm() {
+        guard let pendingChannel, hasChange else { return }
+        app.select(pendingChannel)
+        finish()
     }
 
     /// Loads the full channel to check that you're allowed to add blocks.
-    private func validateAndSelect(_ idOrSlug: String, id: Int) async {
-        guard let client = app.client else { return }
+    private func validate(_ idOrSlug: String, id: Int) async -> Channel? {
+        guard let client = app.client else { return nil }
         validatingID = id
         defer { validatingID = nil }
         do {
             let channel = try await client.channel(idOrSlug)
             guard channel.can?.addTo == true else {
                 errorMessage = "You can't add blocks to “\(channel.title)”."
-                return
+                return nil
             }
-            app.select(channel)
-            finish()
+            return channel
         } catch {
             app.handle(error)
             errorMessage = error.localizedDescription
+            return nil
         }
     }
 
