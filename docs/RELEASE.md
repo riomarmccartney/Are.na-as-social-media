@@ -42,7 +42,9 @@ bundle exec fastlane match appstore \
   --team_id <TEAM_ID>
 ```
 
-It asks for a passphrase — this is `MATCH_PASSWORD`. It creates the
+It signs in to the developer portal as `riomar@upcoming.studio` (the
+`apple_id` in `fastlane/Appfile`) and asks for a passphrase — this is
+`MATCH_PASSWORD`. It creates the
 distribution certificate and both App Store profiles, encrypts them and pushes
 them to the certificates repository.
 

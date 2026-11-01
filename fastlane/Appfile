@@ -1,3 +1,6 @@
 # Keep in sync with CHIRP_BUNDLE_ID in Config/Shared.xcconfig.
 app_identifier("studio.upcoming.arenapost")
+# Apple ID for local runs that sign in interactively (e.g. the first
+# `fastlane match appstore`). CI authenticates with the App Store Connect API key.
+apple_id("riomar@upcoming.studio")
 team_id(ENV["CHIRP_TEAM_ID"]) if ENV["CHIRP_TEAM_ID"]
