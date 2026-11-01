@@ -1,13 +1,10 @@
 # Releasing to the App Store
 
 `.github/workflows/release.yml` (run by hand from the Actions tab) builds a
-signed IPA and uploads it to App Store Connect with
-[Publish iOS App to App Store](https://github.com/marketplace/actions/publish-ios-app-to-app-store)
-(`openMF/mifos-x-actionhub-publish-ios-on-appstore@v1.0.15`).
-
-That action only sets up Ruby, writes the API key and match SSH key to
-`secrets/` (git-ignored), and runs `bundle exec fastlane ios release`. The
-lane itself is in [`fastlane/Fastfile`](../fastlane/Fastfile):
+signed IPA and uploads it to App Store Connect. It installs Ruby and the gems
+in `Gemfile.lock`, trusts GitHub's SSH host keys for match, and runs
+`bundle exec fastlane ios release`. The lane is in
+[`fastlane/Fastfile`](../fastlane/Fastfile):
 
 1. `setup_ci` — temporary keychain.
 2. `match` (read-only) — App Store certificate + profiles for
@@ -90,6 +87,6 @@ TestFlight after Apple finishes processing it.
   every build before it can be tested or submitted.
 - Store listing (description, screenshots, privacy) is edited in App Store
   Connect; the lane skips metadata so it never overwrites it.
-- To release locally, put the `.p8` at `secrets/AuthKey.p8`, export the same
-  variables and secrets, run `xcodegen generate`, then
-  `bundle exec fastlane ios release`.
+- To release locally, put the `.p8` at `secrets/AuthKey.p8` (git-ignored) or
+  export `APPSTORE_AUTH_KEY`, export the other secrets and variables above,
+  run `xcodegen generate`, then `bundle exec fastlane ios release`.

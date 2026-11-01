@@ -35,16 +35,25 @@ jobs:
           brew install xcodegen
           xcodegen generate
 
-      # Runs `bundle exec fastlane ios release` (fastlane/Fastfile).
-      # ios_package_name and shared_module are required by the action but
-      # only used by Kotlin Multiplatform projects.
-      - name: Publish to App Store
-        uses: openMF/mifos-x-actionhub-publish-ios-on-appstore@v1.0.15
+      # Ruby from .ruby-version, gems from Gemfile.lock (cached).
+      - uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.232.0
         with:
-          ios_package_name: Chirp
-          shared_module: .
-          appstore_key_id: ${{ secrets.APPSTORE_KEY_ID }}
-          appstore_issuer_id: ${{ secrets.APPSTORE_ISSUER_ID }}
-          appstore_auth_key: ${{ secrets.APPSTORE_AUTH_KEY }}
-          match_password: ${{ secrets.MATCH_PASSWORD }}
-          match_git_private_key: ${{ secrets.MATCH_GIT_PRIVATE_KEY }}
+          bundler-cache: true
+
+      # match clones the certificates repo over SSH; trust GitHub's published
+      # host keys rather than whatever ssh-keyscan returns.
+      - name: Trust github.com SSH host keys
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p ~/.ssh
+          gh api meta --jq '.ssh_keys[] | "github.com " + .' >> ~/.ssh/known_hosts
+
+      - name: Build and upload
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_AUTH_KEY: ${{ secrets.APPSTORE_AUTH_KEY }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_PRIVATE_KEY: ${{ secrets.MATCH_GIT_PRIVATE_KEY }}
+        run: bundle exec fastlane ios release
