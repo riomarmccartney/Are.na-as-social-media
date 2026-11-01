@@ -2,8 +2,7 @@ import ArenaKit
 import SwiftUI
 
 /// A block in the list: a square with its content and the title underneath,
-/// as on an are.na channel page. `menu` is offered on long press and from
-/// the ••• button.
+/// as on an are.na channel page. `menu` is offered on long press.
 struct BlockTile<MenuItems: View>: View {
     let block: Block
     let onOpen: () -> Void
@@ -36,21 +35,8 @@ struct BlockTile<MenuItems: View>: View {
             }
             .font(.arenaSmall)
             .foregroundStyle(.arenaSecondary)
-            .padding(.horizontal, 30)
             .frame(maxWidth: .infinity)
             .accessibilityHidden(true)
-            .overlay(alignment: .trailing) {
-                Menu {
-                    menu()
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.arenaSecondary)
-                        .frame(width: 30, height: 30)
-                        .contentShape(Rectangle())
-                }
-                .accessibilityLabel("More")
-            }
         }
     }
 
